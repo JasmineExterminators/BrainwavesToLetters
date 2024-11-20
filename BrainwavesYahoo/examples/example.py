@@ -2,6 +2,8 @@ from neurosity import NeurositySDK
 from dotenv import load_dotenv
 import os
 import time
+from cmu_graphics import *
+
 
 load_dotenv()
 
@@ -17,20 +19,45 @@ neurosity.login({
 info = neurosity.get_info()
 print(info)
 
-def bitingALemon(data):
-    print("data", data)
-    # Switch light off/on
+# class Prob:
+#     def __init__(num):
+#         self.num = num
+
+def onAppStart(appInstance):
+    global app
+    app = appInstance
+    app.probability = 50
+    neurosity.kinesis("tongue", tongue)
+
+# def onStep(app):
     
+
+def tongue(data):
+    # Switch light off/on
+    probability = data.get("confidence", None)
+    if probability is not None:
+        print("Probability!!!:", probability)
+        app.probability = probability
+    else:
+        print("No probability data found in:", data)
     # { probability: 0.93, label: "rightArm", timestamp: 1569961321174, metric: "kinesis" }
+    
 
-def leftArm(data):
-    print("data", data)
+def redrawAll(app):
+    drawLabel(f'probability:{app.probability}', 200,200)
 
-unsubscribe = neurosity.kinesis("bitingALemon", bitingALemon)
-unsubscribe = neurosity.kinesis("leftArm", leftArm)
+# runApp()
+while True:
+    
+    unsubscribe = neurosity.kinesis("tongue", tongue)
+    
+    # unsubscribe = neurosity.kinesis("leftArm", leftArm)
+
+# cmu_graphics.run() 
 
 
 # unsubscribe = neurosity.brainwaves_raw(callback)
-time.sleep(15)
+time.sleep(500)
 unsubscribe()
 print("Done with example.py")
+
