@@ -27,10 +27,12 @@ def onAppStart(appInstance):
     global app
     app = appInstance
     app.probability = 50
-    neurosity.kinesis("tongue", tongue)
-
-# def onStep(app):
     
+    
+
+def onStep(app):
+    global unsubscribe
+    unsubscribe = neurosity.kinesis("tongue", tongue)
 
 def tongue(data):
     # Switch light off/on
@@ -46,12 +48,10 @@ def tongue(data):
 def redrawAll(app):
     drawLabel(f'probability:{app.probability}', 200,200)
 
-# runApp()
-while True:
+runApp()
+# while True:
+#     unsubscribe = neurosity.kinesis("tongue", tongue)
     
-    unsubscribe = neurosity.kinesis("tongue", tongue)
-    
-    # unsubscribe = neurosity.kinesis("leftArm", leftArm)
 
 # cmu_graphics.run() 
 
