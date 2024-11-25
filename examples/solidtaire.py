@@ -17,35 +17,69 @@ def onAppStart(app):
     app.verticalCardSpacing = 20
     makeFullDeck(app) # makes app.fullDeck in a set of tuples
     app.sideDeck = copy.deepcopy(app.fullDeck)
+    app.sideDeckFlipped = []
     makeGraphicsDict(app)
     app.numPiles = 4
-    # makeInitialPiles(app)
-    app.piles = [[('heart', 13)], [('spade', 4), ('heart', 3)], [('diamond', 13), ('diamond', 1), ('diamond', 3)], [('diamond', 12), ('clover', 12), ('heart', 6), ('spade', 1)]]
+    app.piles = None
+    # while app.piles == None or isInitialPilesSolvable(app) == 'False':
+    #     makeInitialPiles(app)
+    app.piles = [[('heart', 13)], [('spade', 4), ('spade', 12)], [('diamond', 13), ('diamond', 1), ('diamond', 3)], [('diamond', 12), ('clover', 12), ('heart', 6), ('spade', 1)]]
     app.doneSlots = [('spade',0),('heart',0),('clover',0),('diamond',0)] # use 0 cuz 1 is next after that
+    app.sideCard = 'None'
+    app.sideBarVerticalCardSpacing = 200
+    app.pilesVisibility = [1 for _ in range(app.numPiles)] # this indicates how many cards in the pile are visible
+    app.isMovingAnimation = False
+    app.currentlyMovingDetails = ()
+    app.currentlyMovingAniLocation = (None, None)
+    app.stepsPerSecond = 10
+    app.isWrongMoveAnimation = False
+    app.cardAngleShake = 5
 
-def redrawAll(app):
+def game_redrawAll(app):
     drawSideBar(app)
     drawSideDeck(app)
     drawPiles(app)
+    drawSideCard(app)
+    drawDoneSlots(app)
+    if app.isMovingAnimation:
+        drawAnimateCardSlide(app)
+    if app.isWrongMoveAnimation:
+        drawAnimateWrongShake(app)
 
-def onKeyPress(app, key):
-    if key == 1:
+def game_onKeyPress(app, key):
+    if key == '1':
         isMoveValid(app, 0)
-    elif key == 2:
+        if not isMoveValid(app, 0):
+            app.wrongMoveAnimation = True
+    elif key == '2':
         isMoveValid(app, 1)
-    elif key == 4:
+    elif key == '4':
         isMoveValid(app, 2)
-    elif key == 5:
+    elif key == '5':
         isMoveValid(app, 3)
-    elif key == 3:
-        pass
-        # flipDeck(app)
-    elif key == 6:
-        isMoveValid(app, 'sideDeck')
+    elif key == '3':
+        flipDeck(app)
+    elif key == '6':
+        isMoveValid(app, 'sideCard')
     elif key == 'r':
         pass
         # reset(app)
+    if winCondition(app): # is this the right place to put this???
+        setActiveScreen('endWin')
 
+def game_onStep(app):
+    if app.isMovingAnimation:
+        xMoveRateSign = app.currentlyMovingDetails[1]
+        yMoveRate = app.currentlyMovingDetails[2]
+        endLocation = app.currentlyMovingDetails[4]
+        app.currentlyMovingAniLocation[0] += xMoveRateSign
+        app.currentlyMovingAniLocation[1] += yMoveRate
+        if xMoveRateSign < 0: # moving right to left
+            if app.currentlyMovingAniLocation[0] <= endLocation[0]:
+                app.isMovingAnimation = False 
+
+    elif app.isWrongMoveAnimation:
+        app.cardAngleShake *= -1
 
 def makeFullDeck(app): # making a list of all the cards in a deck of normal playing cards, each card represented as a tuple.
     suits = ['clover', 'spade', 'heart', 'diamond']
@@ -81,53 +115,156 @@ def drawPiles(app):
     spaceForPiles = app.width - app.sidebarWidth
     spaceBetweenPiles = spaceForPiles/(app.numPiles+1)
     for pile in range(len(app.piles)):
+        numCardsVisible = app.pilesVisibility[pile]
         for card in range(len(app.piles[pile])):
-            if card == len(app.piles[pile])-1: # if the card is the last one
-                #draw card
-                cardGraphicURL = app.cardGraphics[app.piles[pile][card]]
-            else:
+            if card < len(app.piles[pile])-numCardsVisible: # if the card is not supposed to be visible (one of the first ones)
                 #draw back card
                 cardGraphicURL = app.cardGraphics[('back')]
+            else:
+                #draw card
+                cardGraphicURL = app.cardGraphics[app.piles[pile][card]]
+        
             cardX = spaceBetweenPiles*(pile+1)
             cardY = app.headerHeight + app.verticalCardSpacing*card
+
+            if card == len(app.piles[pile])-1 and app.isWrongMoveAnimation:
+                drawAnimateWrongShake(app, app.piles[pile][card], cardX, cardY)
+            
             drawImage(cardGraphicURL, cardX, cardY, 
                       width=app.cardWidth, height=app.cardHeight, align='center')
 
+def flipDeck(app):
+    cardFlipped = app.sideDeck.pop()
+    app.sideCard = cardFlipped
+    app.sideDeckFlipped.append(cardFlipped)
+
 def isMoveValid(app, pileFrom): # pileFrom is the index into app.piles or 'sideDeck'
-    if pileFrom == 'sideDeck':
-        print('change from sideDeck to copy of that that we are updating as we flip')
-        cardToMove = app.sideDeck.pop()
+    if pileFrom == 'sideCard':
+        if app.sideCard == 'None':
+            print('Cannot do! No sidecard flipped!')
+            return False
+        else:
+            cardToMove = app.sideCard
     else:
         cardToMove = app.piles[pileFrom][-1]
     cardToMoveSuit = cardToMove[0]
-    cardToMoveColor = getCardColor(app, cardToMove)
+    cardToMoveColor = getCardColor(cardToMove)
     cardToMoveNum = cardToMove[1]
     for slot in range(len(app.doneSlots)):
         currSlotSuit = app.doneSlots[slot][0]
         currSlotNum = app.doneSlots[slot][1]
         if currSlotSuit == cardToMoveSuit:
             if currSlotNum+1 == cardToMoveNum:
-                print('success')
-                # makeMove(app)
+                makeMove(app, pileFrom, 'slot', slot)
 
     for pile in range(app.numPiles):
         if pile == pileFrom:
             continue
-        openCardinPile = app.piles[pile][-1]
-        openCardinPileColor = getCardColor(openCardinPile)
-        openCardinPileNum = openCardinPile[1]
-        if cardToMoveColor == openCardinPileColor: # needs to be alternating colors
+        lastCardinPile = app.piles[pile][-1]
+        lastCardinPileColor = getCardColor(lastCardinPile)
+        lastCardinPileNum = lastCardinPile[1]
+        if cardToMoveColor == lastCardinPileColor: # needs to be alternating colors
+            print('failed cuz not right color')
             return False
-        elif not cardToMoveNum -1 == openCardinPileNum:
+        elif not cardToMoveNum +1 == lastCardinPileNum:
+            print('failed cuz not right num', cardToMoveNum, lastCardinPileNum)
             return False
         else:
-            print('success')
-            # makeMove(app)
+            makeMove(app, pileFrom, 'pile', pile)
+            print('success move')
             return True
 
 def getCardColor(card):
     suit = card[0]
     return 'red' if suit == 'heart' or suit == 'diamond' else 'black'
+
+def makeMove(app, pileFrom, toSlotOrPile, movedTo):
+    # these are to help calculate the card locations
+    spaceForPiles = app.width - app.sidebarWidth
+    spaceBetweenPiles = spaceForPiles/(app.numPiles+1)
+    
+    if pileFrom == 'sideCard':
+        cardMoving = app.sideDeckFlipped.pop()
+        flipDeck(app)
+        # below is all to get the fromLocation
+        fromLocationX = app.width - app.sidebarWidth/2
+        fromLocationY = app.headerHeight + app.sideBarVerticalCardSpacing
+        fromLocation = (fromLocationX, fromLocationY)
+    else:
+        cardMoving = app.piles[pileFrom].pop()
+        # below is all to get the fromLocation
+        fromLocationX = spaceBetweenPiles*(pileFrom+1)
+        numCardsInPile = len(app.piles[pileFrom])+1 # +1 cuz we popped the last one already
+        fromLocationY = app.headerHeight + app.verticalCardSpacing*(numCardsInPile-1) # -1 cuz the first card is 0*spacing
+        fromLocation = (fromLocationX, fromLocationY)
+    
+    if toSlotOrPile == 'slot':
+        app.doneSlots[movedTo] = cardMoving
+        # below is all to get the toLocation
+        spaceForSlots = app.width - app.sidebarWidth
+        spaceBetweenSlots = spaceForSlots/(len(app.doneSlots)+1)
+        toLocationX = spaceBetweenSlots*(movedTo+1)
+        toLocationY = app.height - app.cardHeight
+        toLocation = (toLocationX, toLocationY)
+    elif toSlotOrPile == 'pile':
+        app.piles[movedTo].append(cardMoving)
+        app.pilesVisibility[movedTo] += 1
+        # below is all to get the toLocation
+        toLocationX = spaceBetweenPiles*(movedTo+1) # +1 because the first one should be one space into the screen already (not at the very edge)
+        numCardsInPile = len(app.piles[movedTo])
+        toLocationY = app.headerHeight + app.verticalCardSpacing*(numCardsInPile-1)
+        toLocation = (toLocationX, toLocationY)
+    
+    app.isMovingAnimation = True
+    movedVertically = toLocationY - fromLocationY
+    movedHorizontally = toLocationX - fromLocationX
+    if movedVertically < 0:
+        yMoveRateSign = -1
+    else:
+        yMoveRateSign = 1
+    yMoveRate = abs(movedVertically / movedHorizontally)*yMoveRateSign # this is the rate of y in comparison to 1 move of x
+    if movedHorizontally < 0:
+        xMoveRateSign = -1
+    else:
+        xMoveRateSign = 1
+    app.currentlyMovingDetails = (cardMoving, xMoveRateSign, yMoveRate, fromLocation, toLocation)
+    app.currentlyMovingAniLocation = list(fromLocation) # need to turn into list so that it's mutable
+
+def drawSideCard(app):
+    if app.sideCard != 'None':
+        cardGraphicURL = app.cardGraphics[app.sideCard]
+        sideCardX = app.width - app.sidebarWidth/2
+        drawImage(cardGraphicURL, sideCardX, app.headerHeight + app.sideBarVerticalCardSpacing, 
+                  width=app.cardWidth, height=app.cardHeight, align='center')
+
+def drawDoneSlots(app):
+    spaceForSlots = app.width - app.sidebarWidth
+    spaceBetweenSlots = spaceForSlots/(len(app.doneSlots)+1)
+    for slot in range(len(app.doneSlots)):
+        card = app.doneSlots[slot]
+        doneSlotX = spaceBetweenSlots*(slot+1)
+        cardGraphicURL = app.cardGraphics[card]
+        drawImage(cardGraphicURL, doneSlotX, app.height - app.cardHeight,
+                  width=app.cardWidth, height=app.cardHeight, align='center')
+
+def winCondition(app):
+    for slot in range(len(app.doneSlots)):
+        if len(app.doneSlots[slot]) != 13:
+            return False
+    return True
+
+# def isInitialPilesSolvable(app):
+
+def drawAnimateCardSlide(app):
+    cardMoving = app.currentlyMovingDetails[0]
+    cardGraphicURL = app.cardGraphics[cardMoving]
+    drawImage(cardGraphicURL, app.currentlyMovingAniLocation[0], app.currentlyMovingAniLocation[1], 
+              width=app.cardWidth, height=app.cardHeight, align='center')
+
+def drawAnimateWrongShake(app, card, cardX, cardY):
+    cardGraphicURL = app.cardGraphics[card]
+    drawImage(cardGraphicURL, cardX, cardY, 
+              width=app.cardWidth, height=app.cardHeight, align='center', rotateAngle=app.cardAngleShake)
 
 
 def makeGraphicsDict(app): #storing all the graphics info and calculating the card sizes
@@ -137,7 +274,15 @@ def makeGraphicsDict(app): #storing all the graphics info and calculating the ca
     cardBackSizeFactor = app.cardHeight/cardBackGraphicHeight # this is the multiplication factor from the actual wanted height to the height of the OG graphic
     app.cardWidth = cardSizeFactor * cardGraphicWidth
     app.cardBackWidth = cardBackSizeFactor * cardBackGraphicWidth
+    # Card Graphics Source: https://en.wikipedia.org/wiki/Standard_52-card_deck
+    # Card Back Graphics Source: https://commons.wikimedia.org/wiki/File:Card_back_01.svg
+    # Card Outline Graphic Source: 
     app.cardGraphics = {('back'): 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/Card_back_01.svg/312px-Card_back_01.svg.png?20071017165047', 
+                        ('clover', 0): 'https://www.clker.com/cliparts/5/9/8/1/13959626591670826938Playing%20Card%20Template.svg.med.png',
+                        ('spade', 0): 'https://www.clker.com/cliparts/5/9/8/1/13959626591670826938Playing%20Card%20Template.svg.med.png',
+                        ('diamond', 0): 'https://www.clker.com/cliparts/5/9/8/1/13959626591670826938Playing%20Card%20Template.svg.med.png',
+                        ('heart', 0): 'https://www.clker.com/cliparts/5/9/8/1/13959626591670826938Playing%20Card%20Template.svg.med.png',
+                        ('clover', 1): 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/English_pattern_ace_of_clubs.svg/800px-English_pattern_ace_of_clubs.svg.png',
                         ('clover', 2): 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/English_pattern_2_of_clubs.svg/800px-English_pattern_2_of_clubs.svg.png',
                         ('clover', 3): 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/14/English_pattern_3_of_clubs.svg/800px-English_pattern_3_of_clubs.svg.png', 
                         ('clover', 4): 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c0/English_pattern_4_of_clubs.svg/800px-English_pattern_4_of_clubs.svg.png', 
@@ -190,4 +335,7 @@ def makeGraphicsDict(app): #storing all the graphics info and calculating the ca
                         ('diamond', 12): 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4f/English_pattern_queen_of_diamonds.svg/800px-English_pattern_queen_of_diamonds.svg.png', 
                         ('diamond', 13): 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1c/English_pattern_king_of_diamonds.svg/800px-English_pattern_king_of_diamonds.svg.png'}
 
-runApp()
+def endWin_redrawAll(app):
+    drawLabel('You WON!', 200, 200)
+
+runAppWithScreens(initialScreen='game')
