@@ -1,5 +1,8 @@
 from cmu_graphics import *
 # from solidtaire import app.headerHeight # how do I do this???
+from PIL import Image
+import os
+
 
 def onAppStart(app):
     app.width = 1500
@@ -14,6 +17,11 @@ def onAppStart(app):
     app.buttonLabels = [['pile 1', 'pile2', 'flip deck'], ['pile 3', 'pile4', 'side card']]
     app.selectedButtonAnimation = None
     app.selectedButtonAniPadding = 10
+    app.percentageTongue = 0
+    
+    img = Image.open('English_pattern_ace_of_clubs.png')
+    # img = img.resize((100,100))
+    app.cmuImage1 = CMUImage(img)
 
 def redrawAll(app):
     for row in range(app.numButtonRows):
@@ -23,6 +31,9 @@ def redrawAll(app):
                           align = 'center', fill = None, border = 'black')
             drawLabel(app.buttonLabels[row][col], buttonX, buttonY, align = 'center')
 
+    
+    drawImage(app.cmuImage1, 205, 200, align='center')
+
     if app.selectedButtonAnimation !=None:
         row = app.selectedButtonAnimation[0]
         col = app.selectedButtonAnimation[1]
@@ -31,7 +42,16 @@ def redrawAll(app):
         topY = buttonCenterY - app.buttonHeight/2 - app.selectedButtonAniPadding
         rightX = buttonCenterX + app.buttonWidth/2 + app.selectedButtonAniPadding
         bottomY = buttonCenterY + app.buttonHeight/2 + app.selectedButtonAniPadding
-        drawLine(leftX, topY, rightX, topY)
+        lengthHorizontalLine = rightX-leftX
+        lengthVertialLine = bottomY - topY
+        if app.percentageTongue <= lengthHorizontalLine: # fix thisssssss!!!
+            drawLine(leftX, topY, app.percentageTongue, topY)
+        elif app.percentageTongue <= lengthHorizontalLine + lengthVertialLine:
+            drawLine(rightX, topY, rightX, app.percentageTongue)
+        elif app.percentageTongue <= 2*lengthHorizontalLine + lengthVertialLine:
+            drawLine(rightX, bottomY, app.percentageTongue*-1, bottomY)
+        elif app.percentageTongue <= 2*lengthHorizontalLine + 2*lengthVertialLine:
+            drawLine(leftX, bottomY, leftX, app.percentageTongue*-1)
             
 def onStep(app):
     if app.selectedButtonAnimation != None:

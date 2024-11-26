@@ -1,6 +1,8 @@
 from cmu_graphics import *
 import random
 import copy
+from PIL import Image
+import os
 
 class Card:
     def __init__(self, suit, num):
@@ -122,13 +124,16 @@ def drawPiles(app):
                 cardGraphicURL = app.cardGraphics[('back')]
             else:
                 #draw card
-                cardGraphicURL = app.cardGraphics[app.piles[pile][card]]
+                img = Image.open(os.path.join('cardGraphicsPNG', app.cardGraphics[app.piles[pile][card]]))
+                cardGraphicURL = CMUImage(img)
+                # cardGraphicURL = app.cardGraphics[app.piles[pile][card]]
         
             cardX = spaceBetweenPiles*(pile+1)
             cardY = app.headerHeight + app.verticalCardSpacing*card
 
             if card == len(app.piles[pile])-1 and app.isWrongMoveAnimation:
                 drawAnimateWrongShake(app, app.piles[pile][card], cardX, cardY)
+            
             
             drawImage(cardGraphicURL, cardX, cardY, 
                       width=app.cardWidth, height=app.cardHeight, align='center')
@@ -295,7 +300,7 @@ def makeGraphicsDict(app): #storing all the graphics info and calculating the ca
                         ('clover', 11): 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/80/English_pattern_jack_of_clubs.svg/800px-English_pattern_jack_of_clubs.svg.png', 
                         ('clover', 12): 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b3/English_pattern_queen_of_clubs.svg/800px-English_pattern_queen_of_clubs.svg.png', 
                         ('clover', 13): 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/English_pattern_king_of_clubs.svg/800px-English_pattern_king_of_clubs.svg.png', 
-                        ('spade', 1): 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/19/English_pattern_ace_of_spades.svg/800px-English_pattern_ace_of_spades.svg.png', 
+                        ('spade', 1): 'English_pattern_ace_of_spades.png', 
                         ('spade', 2): 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0b/English_pattern_2_of_spades.svg/800px-English_pattern_2_of_spades.svg.png', 
                         ('spade', 3): 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/English_pattern_3_of_spades.svg/800px-English_pattern_3_of_spades.svg.png', 
                         ('spade', 4): 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/34/English_pattern_4_of_spades.svg/800px-English_pattern_4_of_spades.svg.png', 
