@@ -25,7 +25,7 @@ def onAppStart(app):
     app.piles = None
     # while app.piles == None or isInitialPilesSolvable(app) == 'False':
     #     makeInitialPiles(app)
-    app.piles = [[('heart', 13)], [('spade', 4), ('spade', 12)], [('diamond', 13), ('diamond', 1), ('diamond', 3)], [('diamond', 12), ('clover', 12), ('heart', 6), ('spade', 1)]]
+    app.piles = [[('heart', 13)], [('spade', 4), ('spade', 12)], [('diamond', 13), ('diamond', 1), ('diamond', 3)], [('diamond', 12), ('clover', 12), ('clover', 6), ('spade', 1)]]
     app.doneSlots = [('spade',0),('heart',0),('clover',0),('diamond',0)] # use 0 cuz 1 is next after that
     app.sideCard = 'None'
     app.sideBarVerticalCardSpacing = 200
@@ -36,6 +36,7 @@ def onAppStart(app):
     app.stepsPerSecond = 100
     app.isWrongMoveAnimation = False
     app.cardAngleShake = 5
+    app.cardSlideRate = 100
 
 def game_redrawAll(app):
     drawSideBar(app)
@@ -74,11 +75,14 @@ def game_onStep(app):
         xMoveRateSign = app.currentlyMovingDetails[1]
         yMoveRate = app.currentlyMovingDetails[2]
         endLocation = app.currentlyMovingDetails[4]
-        app.currentlyMovingAniLocation[0] += xMoveRateSign
-        app.currentlyMovingAniLocation[1] += yMoveRate
+        app.currentlyMovingAniLocation[0] += xMoveRateSign*app.cardSlideRate
+        app.currentlyMovingAniLocation[1] += yMoveRate*app.cardSlideRate
         if xMoveRateSign < 0: # moving right to left
             if app.currentlyMovingAniLocation[0] <= endLocation[0]:
                 app.isMovingAnimation = False 
+        else: # moving left to right
+            if app.currentlyMovingAniLocation[0] >= endLocation[0]:
+                app.isMovingAnimation = False
 
     elif app.isWrongMoveAnimation:
         app.cardAngleShake *= -1
@@ -136,6 +140,9 @@ def drawPiles(app):
             if card == len(app.piles[pile])-1 and app.isWrongMoveAnimation:
                 drawAnimateWrongShake(app, app.piles[pile][card], cardX, cardY)
             
+            # we are skipping drawing the card if it was just moved to new location and the sliding animation is not yet done
+            if app.isMovingAnimation and app.currentlyMovingDetails[0] == app.piles[pile][card]:
+                continue
             
             drawImage(cardGraphicURL, cardX, cardY, 
                       width=app.cardWidth, height=app.cardHeight, align='center')
@@ -170,16 +177,11 @@ def isMoveValid(app, pileFrom): # pileFrom is the index into app.piles or 'sideD
         lastCardinPile = app.piles[pile][-1]
         lastCardinPileColor = getCardColor(lastCardinPile)
         lastCardinPileNum = lastCardinPile[1]
-        if cardToMoveColor == lastCardinPileColor: # needs to be alternating colors
-            print('failed cuz not right color')
-            return False
-        elif not cardToMoveNum +1 == lastCardinPileNum:
-            print('failed cuz not right num', cardToMoveNum, lastCardinPileNum)
-            return False
-        else:
+        if cardToMoveColor != lastCardinPileColor and cardToMoveNum +1 == lastCardinPileNum:
             makeMove(app, pileFrom, 'pile', pile)
             print('success move')
             return True
+    return False
 
 def getCardColor(card):
     suit = card[0]
@@ -237,6 +239,7 @@ def makeMove(app, pileFrom, toSlotOrPile, movedTo):
     app.currentlyMovingDetails = (cardMoving, xMoveRateSign, yMoveRate, fromLocation, toLocation)
     app.currentlyMovingAniLocation = list(fromLocation) # need to turn into list so that it's mutable
 
+
 def drawSideCard(app):
     if app.sideCard != 'None':
         img = Image.open(os.path.join('cardGraphicsPNG', app.cardGraphics[app.sideCard]))
@@ -254,6 +257,9 @@ def drawDoneSlots(app):
         doneSlotX = spaceBetweenSlots*(slot+1)
         img = Image.open(os.path.join('cardGraphicsPNG', app.cardGraphics[card]))
         cardGraphicURL = CMUImage(img)
+        if app.isMovingAnimation and app.currentlyMovingDetails[0] == card:
+
+            continue
         drawImage(cardGraphicURL, doneSlotX, app.height - app.cardHeight,
                   width=app.cardWidth, height=app.cardHeight, align='center')
 
@@ -292,8 +298,13 @@ def makeGraphicsDict(app): #storing all the graphics info and calculating the ca
     for suit in ['clover', 'spade', 'heart', 'diamond']:
         for num in range(14):
             cardTuple = (suit, num)
+            
+            # this is to fix the conversion cuz I call it clover and the images call it clubs
             if suit == 'clover':
-                suit = 'club'
+                suitName = 'club'
+            else:
+                suitName = suit
+            
             if num == 0:
                 graphicName = 'EmptyCard.png'
             else:
@@ -307,11 +318,11 @@ def makeGraphicsDict(app): #storing all the graphics info and calculating the ca
                     graphicNameNum = 'king'
                 else:
                     graphicNameNum = str(num)
-                graphicName = f'English_pattern_{graphicNameNum}_of_{suit}s.png'
+                graphicName = f'English_pattern_{graphicNameNum}_of_{suitName}s.png'
             app.cardGraphics[cardTuple] = graphicName
     app.cardGraphics[('back')] = 'cardBack.png'
     print(app.cardGraphics)
-    
+
 def endWin_redrawAll(app):
     drawLabel('You WON!', 200, 200)
 

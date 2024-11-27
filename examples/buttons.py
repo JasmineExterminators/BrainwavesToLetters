@@ -19,9 +19,7 @@ def onAppStart(app):
     app.selectedButtonAniPadding = 10
     app.percentageTongue = 0
     
-    img = Image.open('English_pattern_ace_of_clubs.png')
-    # img = img.resize((100,100))
-    app.cmuImage1 = CMUImage(img)
+
 
 def redrawAll(app):
     for row in range(app.numButtonRows):
@@ -29,10 +27,7 @@ def redrawAll(app):
             buttonX, buttonY = getButtonXY(app, row, col)
             drawRect(buttonX, buttonY, app.buttonWidth, app.buttonHeight,
                           align = 'center', fill = None, border = 'black')
-            drawLabel(app.buttonLabels[row][col], buttonX, buttonY, align = 'center')
-
-    
-    drawImage(app.cmuImage1, 205, 200, align='center')
+            drawLabel(app.buttonLabels[row][col], buttonX, buttonY, align = 'center')    
 
     if app.selectedButtonAnimation !=None:
         row = app.selectedButtonAnimation[0]
