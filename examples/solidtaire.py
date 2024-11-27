@@ -33,7 +33,7 @@ def onAppStart(app):
     app.isMovingAnimation = False
     app.currentlyMovingDetails = ()
     app.currentlyMovingAniLocation = (None, None)
-    app.stepsPerSecond = 10
+    app.stepsPerSecond = 100
     app.isWrongMoveAnimation = False
     app.cardAngleShake = 5
 
@@ -108,7 +108,8 @@ def drawSideBar(app):
     drawLine(sidebarX, 0, sidebarX, app.height)
 
 def drawSideDeck(app):
-    backGraphicURL = app.cardGraphics['back']
+    img = Image.open(os.path.join('cardGraphicsPNG', app.cardGraphics[('back')]))
+    backGraphicURL = CMUImage(img)
     sideDeckX = app.width - app.sidebarWidth/2
     drawImage(backGraphicURL, sideDeckX, app.headerHeight, 
               width=app.cardBackWidth, height=app.cardHeight, align='center')
@@ -121,7 +122,8 @@ def drawPiles(app):
         for card in range(len(app.piles[pile])):
             if card < len(app.piles[pile])-numCardsVisible: # if the card is not supposed to be visible (one of the first ones)
                 #draw back card
-                cardGraphicURL = app.cardGraphics[('back')]
+                img = Image.open(os.path.join('cardGraphicsPNG', app.cardGraphics[('back')]))
+                cardGraphicURL = CMUImage(img)
             else:
                 #draw card
                 img = Image.open(os.path.join('cardGraphicsPNG', app.cardGraphics[app.piles[pile][card]]))
@@ -237,7 +239,8 @@ def makeMove(app, pileFrom, toSlotOrPile, movedTo):
 
 def drawSideCard(app):
     if app.sideCard != 'None':
-        cardGraphicURL = app.cardGraphics[app.sideCard]
+        img = Image.open(os.path.join('cardGraphicsPNG', app.cardGraphics[app.sideCard]))
+        cardGraphicURL = CMUImage(img)
         sideCardX = app.width - app.sidebarWidth/2
         drawImage(cardGraphicURL, sideCardX, app.headerHeight + app.sideBarVerticalCardSpacing, 
                   width=app.cardWidth, height=app.cardHeight, align='center')
@@ -245,10 +248,12 @@ def drawSideCard(app):
 def drawDoneSlots(app):
     spaceForSlots = app.width - app.sidebarWidth
     spaceBetweenSlots = spaceForSlots/(len(app.doneSlots)+1)
+    
     for slot in range(len(app.doneSlots)):
         card = app.doneSlots[slot]
         doneSlotX = spaceBetweenSlots*(slot+1)
-        cardGraphicURL = app.cardGraphics[card]
+        img = Image.open(os.path.join('cardGraphicsPNG', app.cardGraphics[card]))
+        cardGraphicURL = CMUImage(img)
         drawImage(cardGraphicURL, doneSlotX, app.height - app.cardHeight,
                   width=app.cardWidth, height=app.cardHeight, align='center')
 
@@ -262,7 +267,8 @@ def winCondition(app):
 
 def drawAnimateCardSlide(app):
     cardMoving = app.currentlyMovingDetails[0]
-    cardGraphicURL = app.cardGraphics[cardMoving]
+    img = Image.open(os.path.join('cardGraphicsPNG', app.cardGraphics[cardMoving]))
+    cardGraphicURL = CMUImage(img)
     drawImage(cardGraphicURL, app.currentlyMovingAniLocation[0], app.currentlyMovingAniLocation[1], 
               width=app.cardWidth, height=app.cardHeight, align='center')
 
@@ -281,65 +287,31 @@ def makeGraphicsDict(app): #storing all the graphics info and calculating the ca
     app.cardBackWidth = cardBackSizeFactor * cardBackGraphicWidth
     # Card Graphics Source: https://en.wikipedia.org/wiki/Standard_52-card_deck
     # Card Back Graphics Source: https://commons.wikimedia.org/wiki/File:Card_back_01.svg
-    # Card Outline Graphic Source: 
-    app.cardGraphics = {('back'): 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/Card_back_01.svg/312px-Card_back_01.svg.png?20071017165047', 
-                        ('clover', 0): 'https://www.clker.com/cliparts/5/9/8/1/13959626591670826938Playing%20Card%20Template.svg.med.png',
-                        ('spade', 0): 'https://www.clker.com/cliparts/5/9/8/1/13959626591670826938Playing%20Card%20Template.svg.med.png',
-                        ('diamond', 0): 'https://www.clker.com/cliparts/5/9/8/1/13959626591670826938Playing%20Card%20Template.svg.med.png',
-                        ('heart', 0): 'https://www.clker.com/cliparts/5/9/8/1/13959626591670826938Playing%20Card%20Template.svg.med.png',
-                        ('clover', 1): 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/English_pattern_ace_of_clubs.svg/800px-English_pattern_ace_of_clubs.svg.png',
-                        ('clover', 2): 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/English_pattern_2_of_clubs.svg/800px-English_pattern_2_of_clubs.svg.png',
-                        ('clover', 3): 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/14/English_pattern_3_of_clubs.svg/800px-English_pattern_3_of_clubs.svg.png', 
-                        ('clover', 4): 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c0/English_pattern_4_of_clubs.svg/800px-English_pattern_4_of_clubs.svg.png', 
-                        ('clover', 5): 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/74/English_pattern_5_of_clubs.svg/800px-English_pattern_5_of_clubs.svg.png', 
-                        ('clover', 6): 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/02/English_pattern_6_of_clubs.svg/800px-English_pattern_6_of_clubs.svg.png', 
-                        ('clover', 7): 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/60/English_pattern_7_of_clubs.svg/800px-English_pattern_7_of_clubs.svg.png', 
-                        ('clover', 8): 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f0/English_pattern_8_of_clubs.svg/800px-English_pattern_8_of_clubs.svg.png', 
-                        ('clover', 9): 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/14/English_pattern_9_of_clubs.svg/800px-English_pattern_9_of_clubs.svg.png', 
-                        ('clover', 10): 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/48/English_pattern_10_of_clubs.svg/800px-English_pattern_10_of_clubs.svg.png', 
-                        ('clover', 11): 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/80/English_pattern_jack_of_clubs.svg/800px-English_pattern_jack_of_clubs.svg.png', 
-                        ('clover', 12): 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b3/English_pattern_queen_of_clubs.svg/800px-English_pattern_queen_of_clubs.svg.png', 
-                        ('clover', 13): 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/English_pattern_king_of_clubs.svg/800px-English_pattern_king_of_clubs.svg.png', 
-                        ('spade', 1): 'English_pattern_ace_of_spades.png', 
-                        ('spade', 2): 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0b/English_pattern_2_of_spades.svg/800px-English_pattern_2_of_spades.svg.png', 
-                        ('spade', 3): 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/English_pattern_3_of_spades.svg/800px-English_pattern_3_of_spades.svg.png', 
-                        ('spade', 4): 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/34/English_pattern_4_of_spades.svg/800px-English_pattern_4_of_spades.svg.png', 
-                        ('spade', 5): 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/English_pattern_5_of_spades.svg/800px-English_pattern_5_of_spades.svg.png', 
-                        ('spade', 6): 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ac/English_pattern_6_of_spades.svg/800px-English_pattern_6_of_spades.svg.png', 
-                        ('spade', 7): 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d1/English_pattern_7_of_spades.svg/800px-English_pattern_7_of_spades.svg.png', 
-                        ('spade', 8): 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4d/English_pattern_8_of_spades.svg/800px-English_pattern_8_of_spades.svg.png', 
-                        ('spade', 9): 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f0/English_pattern_9_of_spades.svg/800px-English_pattern_9_of_spades.svg.png', 
-                        ('spade', 10): 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/da/English_pattern_10_of_spades.svg/800px-English_pattern_10_of_spades.svg.png', 
-                        ('spade', 11): 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4f/English_pattern_jack_of_spades.svg/800px-English_pattern_jack_of_spades.svg.png', 
-                        ('spade', 12): 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/English_pattern_queen_of_spades.svg/800px-English_pattern_queen_of_spades.svg.png', 
-                        ('spade', 13): 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f1/English_pattern_king_of_spades.svg/800px-English_pattern_king_of_spades.svg.png', 
-                        ('heart', 1): 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/English_pattern_ace_of_hearts.svg/800px-English_pattern_ace_of_hearts.svg.png', 
-                        ('heart', 2): 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/26/English_pattern_2_of_hearts.svg/800px-English_pattern_2_of_hearts.svg.png', 
-                        ('heart', 3): 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0f/English_pattern_3_of_hearts.svg/800px-English_pattern_3_of_hearts.svg.png', 
-                        ('heart', 4): 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/bb/English_pattern_4_of_hearts.svg/800px-English_pattern_4_of_hearts.svg.png', 
-                        ('heart', 5): 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c6/English_pattern_5_of_hearts.svg/800px-English_pattern_5_of_hearts.svg.png', 
-                        ('heart', 6): 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/da/English_pattern_6_of_hearts.svg/800px-English_pattern_6_of_hearts.svg.png', 
-                        ('heart', 7): 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/cb/English_pattern_7_of_hearts.svg/800px-English_pattern_7_of_hearts.svg.png', 
-                        ('heart', 8): 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3c/English_pattern_8_of_hearts.svg/800px-English_pattern_8_of_hearts.svg.png', 
-                        ('heart', 9): 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/22/English_pattern_9_of_hearts.svg/800px-English_pattern_9_of_hearts.svg.png', 
-                        ('heart', 10): 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/bb/English_pattern_10_of_hearts.svg/800px-English_pattern_10_of_hearts.svg.png', 
-                        ('heart', 11): 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/56/English_pattern_jack_of_hearts.svg/800px-English_pattern_jack_of_hearts.svg.png', 
-                        ('heart', 12): 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9d/English_pattern_queen_of_hearts.svg/800px-English_pattern_queen_of_hearts.svg.png', 
-                        ('heart', 13): 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/14/English_pattern_king_of_hearts.svg/800px-English_pattern_king_of_hearts.svg.png', 
-                        ('diamond', 1): 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/00/English_pattern_ace_of_diamonds.svg/800px-English_pattern_ace_of_diamonds.svg.png', 
-                        ('diamond', 2): 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/99/English_pattern_2_of_diamonds.svg/800px-English_pattern_2_of_diamonds.svg.png', 
-                        ('diamond', 3): 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2c/English_pattern_3_of_diamonds.svg/800px-English_pattern_3_of_diamonds.svg.png', 
-                        ('diamond', 4): 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4e/English_pattern_4_of_diamonds.svg/800px-English_pattern_4_of_diamonds.svg.png', 
-                        ('diamond', 5): 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6c/English_pattern_5_of_diamonds.svg/800px-English_pattern_5_of_diamonds.svg.png', 
-                        ('diamond', 6): 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4e/English_pattern_6_of_diamonds.svg/800px-English_pattern_6_of_diamonds.svg.png', 
-                        ('diamond', 7): 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5d/English_pattern_7_of_diamonds.svg/800px-English_pattern_7_of_diamonds.svg.png', 
-                        ('diamond', 8): 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/18/English_pattern_8_of_diamonds.svg/800px-English_pattern_8_of_diamonds.svg.png', 
-                        ('diamond', 9): 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f5/English_pattern_9_of_diamonds.svg/800px-English_pattern_9_of_diamonds.svg.png', 
-                        ('diamond', 10): 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/da/English_pattern_10_of_diamonds.svg/800px-English_pattern_10_of_diamonds.svg.png', 
-                        ('diamond', 11): 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/16/English_pattern_jack_of_diamonds.svg/800px-English_pattern_jack_of_diamonds.svg.png', 
-                        ('diamond', 12): 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4f/English_pattern_queen_of_diamonds.svg/800px-English_pattern_queen_of_diamonds.svg.png', 
-                        ('diamond', 13): 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1c/English_pattern_king_of_diamonds.svg/800px-English_pattern_king_of_diamonds.svg.png'}
-
+    # Card Outline Graphic Source: https://www.clker.com/cliparts/5/9/8/1/13959626591670826938Playing%20Card%20Template.svg.med.png
+    app.cardGraphics = dict()
+    for suit in ['clover', 'spade', 'heart', 'diamond']:
+        for num in range(14):
+            cardTuple = (suit, num)
+            if suit == 'clover':
+                suit = 'club'
+            if num == 0:
+                graphicName = 'EmptyCard.png'
+            else:
+                if num == 1:
+                    graphicNameNum = 'ace'
+                elif num == 11:
+                    graphicNameNum = 'jack'
+                elif num == 12:
+                    graphicNameNum = 'queen'
+                elif num == 13:
+                    graphicNameNum = 'king'
+                else:
+                    graphicNameNum = str(num)
+                graphicName = f'English_pattern_{graphicNameNum}_of_{suit}s.png'
+            app.cardGraphics[cardTuple] = graphicName
+    app.cardGraphics[('back')] = 'cardBack.png'
+    print(app.cardGraphics)
+    
 def endWin_redrawAll(app):
     drawLabel('You WON!', 200, 200)
 
