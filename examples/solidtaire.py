@@ -23,11 +23,11 @@ def onAppStart(app):
     makeGraphicsDict(app)
     app.numPiles = 4
     app.piles = []
-    # makeInitialPiles(app)
+    makeInitialPiles(app)
     # while app.piles == [] or isInitialPilesSolvable(app) == 'False':
     #     makeInitialPiles(app)
     # this is the test piles:
-    app.piles = [[('heart', 1)], [('spade', 4), ('spade', 12)], [('diamond', 13), ('diamond', 1), ('diamond', 3)], [('diamond', 12), ('clover', 12), ('clover', 6), ('spade', 1)]]
+    # app.piles = [[('heart', 1)], [('spade', 4), ('spade', 12)], [('diamond', 13), ('diamond', 1), ('diamond', 3)], [('diamond', 12), ('clover', 12), ('clover', 6), ('spade', 1)]]
     app.doneSlots = [('spade',0),('heart',0),('clover',0),('diamond',0)] # use 0 cuz 1 is next after that
     app.sideCard = 'None'
     app.sideBarVerticalCardSpacing = 200
@@ -35,11 +35,14 @@ def onAppStart(app):
     app.isMovingAnimation = False
     app.currentlyMovingDetails = ()
     app.currentlyMovingAniLocation = (None, None)
-    app.stepsPerSecond = 100
+    app.stepsPerSecond = 500
     app.isWrongMoveAnimation = False
     app.cardAngleShake = 5
-    app.cardSlideRate = 100
+    app.cardSlideRate = 20
     app.errorCount = 0
+    app.isHintMode = False
+    if app.isHintMode:
+        findPossibleMovesHint(app)
 
 def game_redrawAll(app):
     drawSideBar(app)
@@ -52,6 +55,9 @@ def game_redrawAll(app):
         drawAnimateCardSlide(app)
     if app.isWrongMoveAnimation:
         drawAnimateWrongShake(app)
+    if app.isHintMode:
+        drawHint(app)
+    
 
 def game_onKeyPress(app, key):
     if key == '1' or key == '2' or key == '4' or key == '5' or key == '6':
@@ -79,6 +85,8 @@ def game_onKeyPress(app, key):
     elif key == 'r':
         pass
         # reset(app)
+    elif key == 'h':
+        app.isHintMode = not app.isHintMode
     if winCondition(app): # is this the right place to put this???
         setActiveScreen('endWin')
 
@@ -230,42 +238,53 @@ def getCardColor(card):
     suit = card[0]
     return 'red' if suit == 'heart' or suit == 'diamond' else 'black'
 
-def makeMove(app, pileFrom, toSlotOrPile, movedTo):
+def getCardLocation(app, slotOrPile, stackIndex):
     # these are to help calculate the card locations
     spaceForPiles = app.width - app.sidebarWidth
     spaceBetweenPiles = spaceForPiles/(app.numPiles+1)
+
+    if stackIndex == 'sideCard':
+        # below is all to get the location
+        locationX = app.width - app.sidebarWidth/2
+        locationY = app.headerHeight + app.sideBarVerticalCardSpacing
+        location = (locationX, locationY)
+
+    elif slotOrPile == 'slot':
+        # below is all to get the location
+        spaceForSlots = app.width - app.sidebarWidth
+        spaceBetweenSlots = spaceForSlots/(len(app.doneSlots)+1)
+        locationX = spaceBetweenSlots*(stackIndex+1)
+        locationY = app.height - app.cardHeight
+        location = (locationX, locationY)
+    elif slotOrPile == 'pile':
+        # below is all to get the location
+        locationX = spaceBetweenPiles*(stackIndex+1) # +1 because the first one should be one space into the screen already (not at the very edge)
+        numCardsInPile = len(app.piles[stackIndex])
+        locationY = app.headerHeight + app.verticalCardSpacing*(numCardsInPile-1) # -1 cuz the first card is 0*spacing
+        location = (locationX, locationY)
+    return location
     
+def makeMove(app, pileFrom, toSlotOrPile, movedTo):
+    fromLocation = getCardLocation(app, 'pile', pileFrom) # it's always going to come from a pile cannot come from a slot
+    fromLocationX = fromLocation[0]
+    fromLocationY = fromLocation[1]
+
     if pileFrom == 'sideCard':
         cardMoving = app.sideDeckFlipped.pop()
         flipDeck(app)
-        # below is all to get the fromLocation
-        fromLocationX = app.width - app.sidebarWidth/2
-        fromLocationY = app.headerHeight + app.sideBarVerticalCardSpacing
-        fromLocation = (fromLocationX, fromLocationY)
     else:
+        # do the location getting before popping so that we have the right number of cards in pile (pre-pop)
         cardMoving = app.piles[pileFrom].pop()
-        # below is all to get the fromLocation
-        fromLocationX = spaceBetweenPiles*(pileFrom+1)
-        numCardsInPile = len(app.piles[pileFrom])+1 # +1 cuz we popped the last one already
-        fromLocationY = app.headerHeight + app.verticalCardSpacing*(numCardsInPile-1) # -1 cuz the first card is 0*spacing
-        fromLocation = (fromLocationX, fromLocationY)
     
     if toSlotOrPile == 'slot':
         app.doneSlots[movedTo] = cardMoving
-        # below is all to get the toLocation
-        spaceForSlots = app.width - app.sidebarWidth
-        spaceBetweenSlots = spaceForSlots/(len(app.doneSlots)+1)
-        toLocationX = spaceBetweenSlots*(movedTo+1)
-        toLocationY = app.height - app.cardHeight
-        toLocation = (toLocationX, toLocationY)
     elif toSlotOrPile == 'pile':
         app.piles[movedTo].append(cardMoving)
         app.pilesVisibility[movedTo] += 1
-        # below is all to get the toLocation
-        toLocationX = spaceBetweenPiles*(movedTo+1) # +1 because the first one should be one space into the screen already (not at the very edge)
-        numCardsInPile = len(app.piles[movedTo])
-        toLocationY = app.headerHeight + app.verticalCardSpacing*(numCardsInPile-1)
-        toLocation = (toLocationX, toLocationY)
+    
+    toLocation = getCardLocation(app, toSlotOrPile, movedTo)
+    toLocationX = toLocation[0]
+    toLocationY = toLocation[1]
     
     app.isMovingAnimation = True
     movedVertically = toLocationY - fromLocationY
@@ -281,7 +300,6 @@ def makeMove(app, pileFrom, toSlotOrPile, movedTo):
         xMoveRateSign = 1
     app.currentlyMovingDetails = (cardMoving, xMoveRateSign, yMoveRate, fromLocation, toLocation)
     app.currentlyMovingAniLocation = list(fromLocation) # need to turn into list so that it's mutable
-
 
 def drawSideCard(app):
     if app.sideCard != 'None':
@@ -368,5 +386,19 @@ def makeGraphicsDict(app): #storing all the graphics info and calculating the ca
 
 def endWin_redrawAll(app):
     drawLabel('You WON!', 200, 200)
+
+def findPossibleMovesHint(app):
+    pass
+    if isMoveValid(app, 'sideCard'):
+        pass
+
+    for pile in range(len(app.piles)):
+        for card in range(len(app.piles[pile])):
+            if isMoveValid(app, pile):
+                pass
+
+def drawHint(app):
+    pass
+    
 
 runAppWithScreens(initialScreen='game')
