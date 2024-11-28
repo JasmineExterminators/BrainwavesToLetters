@@ -138,7 +138,17 @@ def drawPiles(app):
     spaceForPiles = app.width - app.sidebarWidth
     spaceBetweenPiles = spaceForPiles/(app.numPiles+1)
     for pile in range(len(app.piles)):
+        
         numCardsVisible = app.pilesVisibility[pile]
+        cardX = spaceBetweenPiles*(pile+1)
+        
+        if app.piles[pile] == []: # if the pile is empty, draw an empty card
+            img = Image.open(os.path.join('cardGraphicsPNG', app.cardGraphics['empty']))
+            cardGraphicURL = CMUImage(img)
+            drawImage(cardGraphicURL, cardX, app.headerHeight, 
+                        width=app.cardWidth, height=app.cardHeight, align='center')
+            continue
+        
         for card in range(len(app.piles[pile])):
             if card < len(app.piles[pile])-numCardsVisible: # if the card is not supposed to be visible (one of the first ones)
                 #draw back card
@@ -150,7 +160,6 @@ def drawPiles(app):
                 cardGraphicURL = CMUImage(img)
                 # cardGraphicURL = app.cardGraphics[app.piles[pile][card]]
         
-            cardX = spaceBetweenPiles*(pile+1)
             cardY = app.headerHeight + app.verticalCardSpacing*card
 
             if card == len(app.piles[pile])-1 and app.isWrongMoveAnimation:
@@ -355,6 +364,7 @@ def makeGraphicsDict(app): #storing all the graphics info and calculating the ca
                 graphicName = f'English_pattern_{graphicNameNum}_of_{suitName}s.png'
             app.cardGraphics[cardTuple] = graphicName
     app.cardGraphics[('back')] = 'cardBack.png'
+    app.cardGraphics['empty'] = 'EmptyCard.png'
 
 def endWin_redrawAll(app):
     drawLabel('You WON!', 200, 200)
