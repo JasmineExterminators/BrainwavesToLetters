@@ -23,11 +23,11 @@ def onAppStart(app):
     makeGraphicsDict(app)
     app.numPiles = 4
     app.piles = []
-    makeInitialPiles(app)
+    # makeInitialPiles(app)
     # while app.piles == [] or isInitialPilesSolvable(app) == 'False':
     #     makeInitialPiles(app)
     # this is the test piles:
-    # app.piles = [[('heart', 13)], [('spade', 4), ('spade', 12)], [('diamond', 13), ('diamond', 1), ('diamond', 3)], [('diamond', 12), ('clover', 12), ('clover', 6), ('spade', 1)]]
+    app.piles = [[('heart', 1)], [('spade', 4), ('spade', 12)], [('diamond', 13), ('diamond', 1), ('diamond', 3)], [('diamond', 12), ('clover', 12), ('clover', 6), ('spade', 1)]]
     app.doneSlots = [('spade',0),('heart',0),('clover',0),('diamond',0)] # use 0 cuz 1 is next after that
     app.sideCard = 'None'
     app.sideBarVerticalCardSpacing = 200
@@ -39,6 +39,7 @@ def onAppStart(app):
     app.isWrongMoveAnimation = False
     app.cardAngleShake = 5
     app.cardSlideRate = 100
+    app.errorCount = 0
 
 def game_redrawAll(app):
     drawSideBar(app)
@@ -52,20 +53,28 @@ def game_redrawAll(app):
         drawAnimateWrongShake(app)
 
 def game_onKeyPress(app, key):
-    if key == '1':
-        isMoveValid(app, 0)
-        if not isMoveValid(app, 0):
+    if key == '1' or key == '2' or key == '4' or key == '5' or key == '6':
+        if key == '1':
+            pileFrom = 0
+        elif key == '2':
+            pileFrom = 1
+        elif key == '4':
+            pileFrom = 2
+        elif key == '5':
+            pileFrom = 3
+        elif key == '6':
+            pileFrom = 'sideCard'
+
+        if isMoveValid(app, pileFrom) != None:
+            print('moveValid')
+            toSlotOrPile, movedTo = isMoveValid(app, pileFrom)
+            makeMove(app, pileFrom, toSlotOrPile, movedTo)
+        else:
+            print('notvalid')
             app.wrongMoveAnimation = True
-    elif key == '2':
-        isMoveValid(app, 1)
-    elif key == '4':
-        isMoveValid(app, 2)
-    elif key == '5':
-        isMoveValid(app, 3)
+        
     elif key == '3':
         flipDeck(app)
-    elif key == '6':
-        isMoveValid(app, 'sideCard')
     elif key == 'r':
         pass
         # reset(app)
@@ -167,20 +176,29 @@ def isMoveValid(app, pileFrom): # pileFrom is the index into app.piles or 'sideD
     if pileFrom == 'sideCard':
         if app.sideCard == 'None':
             print('Cannot do! No sidecard flipped!')
-            return False
+            app.errorCount += 1
+            return None
         else:
             cardToMove = app.sideCard
+    elif app.piles[pileFrom] == []:
+        app.errorCount += 1
+        return None
     else:
         cardToMove = app.piles[pileFrom][-1]
     cardToMoveSuit = cardToMove[0]
     cardToMoveColor = getCardColor(cardToMove)
     cardToMoveNum = cardToMove[1]
+    
     for slot in range(len(app.doneSlots)):
+        print('inslotloop')
         currSlotSuit = app.doneSlots[slot][0]
         currSlotNum = app.doneSlots[slot][1]
         if currSlotSuit == cardToMoveSuit:
+            print(currSlotSuit, cardToMove)
             if currSlotNum+1 == cardToMoveNum:
-                makeMove(app, pileFrom, 'slot', slot)
+                print('successful')
+                return 'slot', slot
+            print('not success', currSlotNum+1, cardToMoveNum)
 
     for pile in range(app.numPiles):
         if pile == pileFrom:
@@ -189,10 +207,9 @@ def isMoveValid(app, pileFrom): # pileFrom is the index into app.piles or 'sideD
         lastCardinPileColor = getCardColor(lastCardinPile)
         lastCardinPileNum = lastCardinPile[1]
         if cardToMoveColor != lastCardinPileColor and cardToMoveNum +1 == lastCardinPileNum:
-            makeMove(app, pileFrom, 'pile', pile)
-            print('success move')
-            return True
-    return False
+            return 'pile', pile
+    app.errorCount += 1
+    return None
 
 def getCardColor(card):
     suit = card[0]
