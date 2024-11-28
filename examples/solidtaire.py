@@ -41,8 +41,6 @@ def onAppStart(app):
     app.cardSlideRate = 20
     app.errorCount = 0
     app.isHintMode = False
-    if app.isHintMode:
-        findPossibleMovesHint(app)
 
 def game_redrawAll(app):
     drawSideBar(app)
@@ -388,17 +386,22 @@ def endWin_redrawAll(app):
     drawLabel('You WON!', 200, 200)
 
 def findPossibleMovesHint(app):
-    pass
-    if isMoveValid(app, 'sideCard'):
-        pass
+    if isMoveValid(app, 'sideCard') != None:
+        highlightStartLocation = getCardLocation(app, 'pile', 'sideCard')
+        slotOrPile, stackIndex = isMoveValid(app, 'sideCard')
+        highlightEndLocation = getCardLocation(app, slotOrPile, stackIndex)
+        return highlightStartLocation, highlightEndLocation
 
-    for pile in range(len(app.piles)):
-        for card in range(len(app.piles[pile])):
-            if isMoveValid(app, pile):
-                pass
+    for pile in range(len(app.piles)): # only need loop thru the piles cuz just choose a pile and automatically looks at last
+        if isMoveValid(app, pile) != None:
+            highlightStartLocation = getCardLocation(app, 'pile', pile)
+            slotOrPile, stackIndex = isMoveValid(app, pile)
+            highlightEndLocation = getCardLocation(app, slotOrPile, stackIndex)
+            return highlightStartLocation, highlightEndLocation
 
 def drawHint(app):
-    pass
+    startLocation, endLocation = findPossibleMovesHint(app)
+    drawCircle(5, startLocation, endLocation)
     
 
 runAppWithScreens(initialScreen='game')
