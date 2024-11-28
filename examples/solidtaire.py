@@ -47,6 +47,7 @@ def game_redrawAll(app):
     drawPiles(app)
     drawSideCard(app)
     drawDoneSlots(app)
+    drawLabel(app.errorCount, 200, 200)
     if app.isMovingAnimation:
         drawAnimateCardSlide(app)
     if app.isWrongMoveAnimation:
@@ -180,7 +181,7 @@ def isMoveValid(app, pileFrom): # pileFrom is the index into app.piles or 'sideD
             return None
         else:
             cardToMove = app.sideCard
-    elif app.piles[pileFrom] == []:
+    elif app.piles[pileFrom] == []: # this is if the pile is empty
         app.errorCount += 1
         return None
     else:
@@ -202,6 +203,8 @@ def isMoveValid(app, pileFrom): # pileFrom is the index into app.piles or 'sideD
 
     for pile in range(app.numPiles):
         if pile == pileFrom:
+            continue
+        if app.piles[pile] == []: # skip over any piles that are empty
             continue
         lastCardinPile = app.piles[pile][-1]
         lastCardinPileColor = getCardColor(lastCardinPile)
