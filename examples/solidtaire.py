@@ -204,8 +204,11 @@ def isMoveValid(app, pileFrom): # pileFrom is the index into app.piles or 'sideD
     for pile in range(app.numPiles):
         if pile == pileFrom:
             continue
-        if app.piles[pile] == []: # skip over any piles that are empty
-            continue
+        if app.piles[pile] == []: 
+            if cardToMoveNum == 13: # if the pile is empty, king can go in it
+                return 'pile', pile
+            else: # skip over any piles that are empty
+                continue 
         lastCardinPile = app.piles[pile][-1]
         lastCardinPileColor = getCardColor(lastCardinPile)
         lastCardinPileNum = lastCardinPile[1]
