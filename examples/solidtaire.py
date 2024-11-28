@@ -22,10 +22,12 @@ def onAppStart(app):
     app.sideDeckFlipped = []
     makeGraphicsDict(app)
     app.numPiles = 4
-    app.piles = None
-    # while app.piles == None or isInitialPilesSolvable(app) == 'False':
+    app.piles = []
+    makeInitialPiles(app)
+    # while app.piles == [] or isInitialPilesSolvable(app) == 'False':
     #     makeInitialPiles(app)
-    app.piles = [[('heart', 13)], [('spade', 4), ('spade', 12)], [('diamond', 13), ('diamond', 1), ('diamond', 3)], [('diamond', 12), ('clover', 12), ('clover', 6), ('spade', 1)]]
+    # this is the test piles:
+    # app.piles = [[('heart', 13)], [('spade', 4), ('spade', 12)], [('diamond', 13), ('diamond', 1), ('diamond', 3)], [('diamond', 12), ('clover', 12), ('clover', 6), ('spade', 1)]]
     app.doneSlots = [('spade',0),('heart',0),('clover',0),('diamond',0)] # use 0 cuz 1 is next after that
     app.sideCard = 'None'
     app.sideBarVerticalCardSpacing = 200
@@ -96,7 +98,9 @@ def makeFullDeck(app): # making a list of all the cards in a deck of normal play
             app.fullDeck.append((suit,number))
 
 def makeInitialPiles(app): # setting up the piles of a new game
+    print(app.piles)
     app.piles = []
+    print(app.piles)
     for _ in range(app.numPiles):
         app.piles.append([])
     for i in range(len(app.piles)): # i is the pile we are on (ex. pile 1, pile 2, etc.)
@@ -106,6 +110,7 @@ def makeInitialPiles(app): # setting up the piles of a new game
             randomCardIndex = random.randint(0,lenDeckLeft-1) #from 0 to the length of what cards are left-1: random int inclusive (there are 52 cards at first)
             app.piles[i].append(app.sideDeck[randomCardIndex])
             app.sideDeck.pop(randomCardIndex) # taking the card placed in the pile out of the sideDeck (so cannot be randomly chosen again)
+            random.shuffle(app.sideDeck) # shuffles the sideDeck once initially
 
 def drawSideBar(app):
     sidebarX = app.width - app.sidebarWidth
@@ -115,8 +120,9 @@ def drawSideDeck(app):
     img = Image.open(os.path.join('cardGraphicsPNG', app.cardGraphics[('back')]))
     backGraphicURL = CMUImage(img)
     sideDeckX = app.width - app.sidebarWidth/2
-    drawImage(backGraphicURL, sideDeckX, app.headerHeight, 
-              width=app.cardBackWidth, height=app.cardHeight, align='center')
+    if app.sideDeck != []:
+        drawImage(backGraphicURL, sideDeckX, app.headerHeight, 
+                  width=app.cardBackWidth, height=app.cardHeight, align='center')
 
 def drawPiles(app):
     spaceForPiles = app.width - app.sidebarWidth
@@ -148,6 +154,11 @@ def drawPiles(app):
                       width=app.cardWidth, height=app.cardHeight, align='center')
 
 def flipDeck(app):
+    if app.sideDeck == []:
+        print('ok')
+        random.shuffle(app.sideDeckFlipped)
+        app.sideDeck = copy.deepcopy(app.sideDeckFlipped)
+        app.sideDeckFlipped = []
     cardFlipped = app.sideDeck.pop()
     app.sideCard = cardFlipped
     app.sideDeckFlipped.append(cardFlipped)
@@ -321,7 +332,6 @@ def makeGraphicsDict(app): #storing all the graphics info and calculating the ca
                 graphicName = f'English_pattern_{graphicNameNum}_of_{suitName}s.png'
             app.cardGraphics[cardTuple] = graphicName
     app.cardGraphics[('back')] = 'cardBack.png'
-    print(app.cardGraphics)
 
 def endWin_redrawAll(app):
     drawLabel('You WON!', 200, 200)
