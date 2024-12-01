@@ -20,8 +20,10 @@ neurosity.login({
 
 def callback(data):
     # Switch light off/on
-    # print(data)
-    print(data.get('probability'))
+    print(data)
+    # predictions = data.get('predictions', None)
+    # probability = predictions[0].get('probability', None)
+    # print(probability)
     # probability = data.get("confidence", None)
     # if probability is not None:
     #     print(data)

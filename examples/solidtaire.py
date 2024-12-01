@@ -14,7 +14,7 @@ def onAppStart(app):
     app.width = 1500
     app.height = 750
     app.sidebarWidth = app.width/6
-    app.headerHeight = app.height/5
+    app.headerHeight = app.height/7
     app.cardHeight = 150
     app.verticalCardSpacing = 20
     makeFullDeck(app) # makes app.fullDeck in a set of tuples
@@ -41,6 +41,20 @@ def onAppStart(app):
     app.cardSlideRate = 20
     app.errorCount = 0
     app.isHintMode = False
+    app.highlightStartLocation = 0
+    app.highlightEndLocation = 0
+    # button stuff
+    app.buttonHeight = app.headerHeight - 50
+    app.buttonWidth = app.width / 15
+    app.numButtonCols = 3 # not changeable easily
+    app.numButtonRows = 2 # not changeable easily
+    app.buttonSpacingOffEdgeX = app.buttonWidth/2 + 50 # need to do this cuz the align of the buttons are center
+    app.buttonSpacingOffEdgeY = app.headerHeight/2 # align of the buttons are center so center the button in the header
+    app.buttonLabels = [['pile 1', 'pile2', 'flip deck'], ['pile 3', 'pile4', 'side card']]
+    app.selectedButtonAnimation = None
+    app.selectedButtonAniPadding = 10
+    app.percentageTongue = 0
+
 
 def game_redrawAll(app):
     drawSideBar(app)
@@ -48,6 +62,7 @@ def game_redrawAll(app):
     drawPiles(app)
     drawSideCard(app)
     drawDoneSlots(app)
+    drawButtons(app)
     drawLabel(app.errorCount, 200, 200)
     if app.isMovingAnimation:
         drawAnimateCardSlide(app)
@@ -85,6 +100,10 @@ def game_onKeyPress(app, key):
         # reset(app)
     elif key == 'h':
         app.isHintMode = not app.isHintMode
+
+    if app.isHintMode: # checks on every key press 
+        findPossibleMovesHint(app)
+        
     if winCondition(app): # is this the right place to put this???
         setActiveScreen('endWin')
 
@@ -128,6 +147,30 @@ def makeInitialPiles(app): # setting up the piles of a new game
             app.sideDeck.pop(randomCardIndex) # taking the card placed in the pile out of the sideDeck (so cannot be randomly chosen again)
             random.shuffle(app.sideDeck) # shuffles the sideDeck once initially
 
+def drawButtons(app):
+    for row in range(app.numButtonRows):
+        for col in range(app.numButtonCols):
+            buttonX, buttonY = getButtonXY(app, row, col)
+            drawRect(buttonX, buttonY, app.buttonWidth, app.buttonHeight,
+                          align = 'center', fill = None, border = 'black')
+            drawLabel(app.buttonLabels[row][col], buttonX, buttonY, align = 'center')
+
+def getButtonXY(app, row, col):
+    # finding buttonY
+    if row == 0:
+        buttonY = app.buttonSpacingOffEdgeY
+    elif row == 1:
+        buttonY = app.height - app.buttonSpacingOffEdgeY
+    # finding buttonX
+    if col == 0:
+        buttonX = app.buttonSpacingOffEdgeX
+    elif col == 1:
+        buttonX = app.width/2
+    elif col == 2:
+        buttonX = app.width - app.buttonSpacingOffEdgeX
+    
+    return buttonX, buttonY
+
 def drawSideBar(app):
     sidebarX = app.width - app.sidebarWidth
     drawLine(sidebarX, 0, sidebarX, app.height)
@@ -137,7 +180,7 @@ def drawSideDeck(app):
     backGraphicURL = CMUImage(img)
     sideDeckX = app.width - app.sidebarWidth/2
     if app.sideDeck != []:
-        drawImage(backGraphicURL, sideDeckX, app.headerHeight, 
+        drawImage(backGraphicURL, sideDeckX, app.headerHeight + app.cardHeight/2, 
                   width=app.cardBackWidth, height=app.cardHeight, align='center')
 
 def drawPiles(app):
@@ -151,7 +194,7 @@ def drawPiles(app):
         if app.piles[pile] == []: # if the pile is empty, draw an empty card
             img = Image.open(os.path.join('cardGraphicsPNG', app.cardGraphics['empty']))
             cardGraphicURL = CMUImage(img)
-            drawImage(cardGraphicURL, cardX, app.headerHeight, 
+            drawImage(cardGraphicURL, cardX, app.headerHeight + app.cardHeight/2, 
                         width=app.cardWidth, height=app.cardHeight, align='center')
             continue
         
@@ -175,7 +218,7 @@ def drawPiles(app):
             if app.isMovingAnimation and app.currentlyMovingDetails[0] == app.piles[pile][card]:
                 continue
             
-            drawImage(cardGraphicURL, cardX, cardY, 
+            drawImage(cardGraphicURL, cardX, cardY + app.cardHeight/2, 
                       width=app.cardWidth, height=app.cardHeight, align='center')
 
 def flipDeck(app):
@@ -244,7 +287,7 @@ def getCardLocation(app, slotOrPile, stackIndex):
     if stackIndex == 'sideCard':
         # below is all to get the location
         locationX = app.width - app.sidebarWidth/2
-        locationY = app.headerHeight + app.sideBarVerticalCardSpacing
+        locationY = app.headerHeight + app.sideBarVerticalCardSpacing + app.cardHeight/2
         location = (locationX, locationY)
 
     elif slotOrPile == 'slot':
@@ -252,13 +295,13 @@ def getCardLocation(app, slotOrPile, stackIndex):
         spaceForSlots = app.width - app.sidebarWidth
         spaceBetweenSlots = spaceForSlots/(len(app.doneSlots)+1)
         locationX = spaceBetweenSlots*(stackIndex+1)
-        locationY = app.height - app.cardHeight
+        locationY = app.height - app.headerHeight - app.cardHeight/2
         location = (locationX, locationY)
     elif slotOrPile == 'pile':
         # below is all to get the location
         locationX = spaceBetweenPiles*(stackIndex+1) # +1 because the first one should be one space into the screen already (not at the very edge)
         numCardsInPile = len(app.piles[stackIndex])
-        locationY = app.headerHeight + app.verticalCardSpacing*(numCardsInPile-1) # -1 cuz the first card is 0*spacing
+        locationY = app.headerHeight + app.verticalCardSpacing*(numCardsInPile-1) + app.cardHeight/2 # -1 cuz the first card is 0*spacing
         location = (locationX, locationY)
     return location
     
@@ -291,7 +334,13 @@ def makeMove(app, pileFrom, toSlotOrPile, movedTo):
         yMoveRateSign = -1
     else:
         yMoveRateSign = 1
-    yMoveRate = abs(movedVertically / movedHorizontally)*yMoveRateSign # this is the rate of y in comparison to 1 move of x
+    
+    # the if, else is to prevent from division by 0
+    if movedHorizontally == 0:
+        yMoveRate = yMoveRateSign
+    else:
+        yMoveRate = abs(movedVertically / movedHorizontally)*yMoveRateSign # this is the rate of y in comparison to 1 move of x
+    
     if movedHorizontally < 0:
         xMoveRateSign = -1
     else:
@@ -304,7 +353,7 @@ def drawSideCard(app):
         img = Image.open(os.path.join('cardGraphicsPNG', app.cardGraphics[app.sideCard]))
         cardGraphicURL = CMUImage(img)
         sideCardX = app.width - app.sidebarWidth/2
-        drawImage(cardGraphicURL, sideCardX, app.headerHeight + app.sideBarVerticalCardSpacing, 
+        drawImage(cardGraphicURL, sideCardX, app.headerHeight + app.sideBarVerticalCardSpacing + app.cardHeight/2, 
                   width=app.cardWidth, height=app.cardHeight, align='center')
 
 def drawDoneSlots(app):
@@ -319,7 +368,7 @@ def drawDoneSlots(app):
         if app.isMovingAnimation and app.currentlyMovingDetails[0] == card:
 
             continue
-        drawImage(cardGraphicURL, doneSlotX, app.height - app.cardHeight,
+        drawImage(cardGraphicURL, doneSlotX, app.height - app.headerHeight - app.cardHeight/2,
                   width=app.cardWidth, height=app.cardHeight, align='center')
 
 def winCondition(app):
@@ -387,21 +436,30 @@ def endWin_redrawAll(app):
 
 def findPossibleMovesHint(app):
     if isMoveValid(app, 'sideCard') != None:
-        highlightStartLocation = getCardLocation(app, 'pile', 'sideCard')
+        app.highlightStartLocation = getCardLocation(app, 'pile', 'sideCard')
         slotOrPile, stackIndex = isMoveValid(app, 'sideCard')
-        highlightEndLocation = getCardLocation(app, slotOrPile, stackIndex)
-        return highlightStartLocation, highlightEndLocation
+        app.highlightEndLocation = getCardLocation(app, slotOrPile, stackIndex)
+        return
 
     for pile in range(len(app.piles)): # only need loop thru the piles cuz just choose a pile and automatically looks at last
         if isMoveValid(app, pile) != None:
-            highlightStartLocation = getCardLocation(app, 'pile', pile)
+            app.highlightStartLocation = getCardLocation(app, 'pile', pile)
             slotOrPile, stackIndex = isMoveValid(app, pile)
-            highlightEndLocation = getCardLocation(app, slotOrPile, stackIndex)
-            return highlightStartLocation, highlightEndLocation
+            app.highlightEndLocation = getCardLocation(app, slotOrPile, stackIndex)
+            return
+    #if none work:
+    app.highlightStartLocation = (app.width - app.sidebarWidth/2, app.headerHeight)
+    app.highlightEndLocation = None
 
 def drawHint(app):
-    startLocation, endLocation = findPossibleMovesHint(app)
-    drawCircle(5, startLocation, endLocation)
-    
+    #startLocationCircle:
+    startX, startY = app.highlightStartLocation[0], app.highlightStartLocation[1]
+    drawCircle(startX, startY, 100)
+    #endLocationCircle
+    if app.highlightEndLocation != None: # this is incase no possible moves, so only one highlight on the sidedeck
+        endX, endY = app.highlightEndLocation[0], app.highlightEndLocation[1]
+        drawCircle(endX, endY, 100)
+
+
 
 runAppWithScreens(initialScreen='game')

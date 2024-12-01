@@ -31,10 +31,11 @@ def onAppStart(appInstance):
 
 def onStep(app):
     global unsubscribe
-    if app.isTongue:
-        unsubscribe = neurosity.calm(callback)
-    else:
-        unsubscribe = neurosity.kinesis("leftArm", leftArm)
+    unsubscribe = neurosity.calm(callback)
+    # if app.isTongue:
+    #     unsubscribe = neurosity.calm(callback)
+    # else:
+    #     unsubscribe = neurosity.kinesis("leftArm", callback)
 
 def onKeyPress(app, key):
     if key == 'j':
@@ -42,23 +43,28 @@ def onKeyPress(app, key):
 
 def callback(data):
     # Switch light off/on
-    probability = data.get("probability", None)
-    if probability is not None:
-        print("Probability!!!Tongue:", probability)
-        app.probability = probability
-    else:
-        print("No probability data found in:", data)
+    print(data)
+    # predictions = data.get('predictions', None)
+    # if predictions is not None:
+    #     probability = predictions[0].get('probability', None)
+    # else:
+    #     print("No predictions!!!!!")
+    # if probability is not None:
+    #     print("Probability!!!Tongue:", probability)
+    #     app.probability = probability
+    # else:
+    #     print("No probability data found in:", data)
     # { probability: 0.93, label: "rightArm", timestamp: 1569961321174, metric: "kinesis" }
     
-def leftArm(data):
-    # Switch light off/on
-    probability = data.get("confidence", None)
-    if probability is not None:
-        print("Probability!!!LeftArm:", probability)
-        app.probability = probability
-    else:
-        print("No probability data found in:", data)
-    # { probability: 0.93, label: "rightArm", timestamp: 1569961321174, metric: "kinesis" }
+# def leftArm(data):
+#     # Switch light off/on
+#     probability = data.get("confidence", None)
+#     if probability is not None:
+#         print("Probability!!!LeftArm:", probability)
+#         app.probability = probability
+#     else:
+#         print("No probability data found in:", data)
+#     # { probability: 0.93, label: "rightArm", timestamp: 1569961321174, metric: "kinesis" }
 
 def redrawAll(app):
     if app.isTongue:
@@ -67,15 +73,15 @@ def redrawAll(app):
         drawLabel(f'probabilityArm:{app.probability}', 200,200)
 
 runApp()
-while True:
-    unsubscribe = neurosity.calm(callback)
+# while True:
+#     unsubscribe = neurosity.calm(callback)
     
 
 # cmu_graphics.run() 
 
 
 # unsubscribe = neurosity.brainwaves_raw(callback)
-time.sleep(500)
-unsubscribe()
-print("Done with example.py")
+# time.sleep(500)
+# unsubscribe()
+# print("Done with example.py")
 
