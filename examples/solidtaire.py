@@ -32,6 +32,7 @@ def onAppStart(app):
     app.sideDeckFlipped = []
     makeGraphicsDict(app)
     app.numPiles = 4
+    app.probThreshold = 0.30
     app.piles = []
     
     # this is the test piles:
@@ -63,8 +64,9 @@ def onAppStart(app):
     app.selectedButtonAniPadding = 10
     app.percentageTongue = 0
     # not button stuff anymore
-    # while app.piles == [] or isInitialPilesSolvable(app) == False:
-    #     makeInitialPiles(app)
+    app.previousPileStates = []
+    while app.piles == [] or isInitialPilesSolvable(app) == False:
+        makeInitialPiles(app)
     
 
 def game_redrawAll(app):
@@ -84,7 +86,7 @@ def game_redrawAll(app):
     
 def game_onKeyPress(app, key):
     print(ProbabilityGlobal, key)
-    if key == '1' and ProbabilityGlobal >= 0.40 or key == '2' and ProbabilityGlobal >= 0.40 or key == '4' and ProbabilityGlobal >= 0.40 or key == '5' and ProbabilityGlobal >= 0.40 or key == '6' and ProbabilityGlobal >= 0.40:
+    if key == '1' and ProbabilityGlobal >= app.probThreshold or key == '2' and ProbabilityGlobal >= app.probThreshold or key == '4' and ProbabilityGlobal >= app.probThreshold or key == '5' and ProbabilityGlobal >= app.probThreshold or key == '6' and ProbabilityGlobal >= app.probThreshold:
         print('pressed success')
         if key == '1':
             pileFrom = 0
@@ -102,6 +104,7 @@ def game_onKeyPress(app, key):
             print('moveValid')
             toSlotOrPile, movedTo = isMoveValid(app, pileFrom)
             makeMove(app, pileFrom, toSlotOrPile, movedTo)
+            
         else:
             print('notvalid')
             app.wrongMoveAnimation = True
@@ -288,6 +291,7 @@ def isMoveValid(app, pileFrom): # pileFrom is the index into app.piles or 'sideD
             else: # skip over any piles that are empty
                 continue 
         lastCardinPile = app.piles[pile][-1]
+        print('lastCardInPile', lastCardinPile)
         lastCardinPileColor = getCardColor(lastCardinPile)
         lastCardinPileNum = lastCardinPile[1]
         if cardToMoveColor != lastCardinPileColor and cardToMoveNum +1 == lastCardinPileNum:
@@ -336,6 +340,7 @@ def makeMove(app, pileFrom, toSlotOrPile, movedTo):
         numMovingCards = app.pilesVisibility[pileFrom]
         if len(app.piles[pileFrom]) - numMovingCards == 0:
             app.pilesVisibility[pileFrom] = 0
+            print('this is the pile that is biegn set to 0 visibiliyt', pileFrom)
         else:
             app.pilesVisibility[pileFrom] = 1
     else:
@@ -345,12 +350,12 @@ def makeMove(app, pileFrom, toSlotOrPile, movedTo):
     
 
     if pileFrom == 'sideCard':
-            cardsMoving = app.sideDeckFlipped.pop()
+            cardsMoving = [app.sideDeckFlipped.pop()] # make sure it's in a list because we use extend list later.
             flipDeck(app)
     else:
         # do the location getting before popping so that we have the right number of cards in pile (pre-pop)
         cardsMoving = app.piles[pileFrom][-numMovingCards:] # chatGPT gave me the idea to use slicing instead of pop
-        app.piles[pileFrom] = app.piles[pileFrom][:-numMovingCards-1]
+        app.piles[pileFrom] = app.piles[pileFrom][:-numMovingCards] # does not need to -1 again in numMovingCards cuz its a negative index
         print('cardsMoving', cardsMoving)
     
     if toSlotOrPile == 'slot':
@@ -358,6 +363,7 @@ def makeMove(app, pileFrom, toSlotOrPile, movedTo):
     elif toSlotOrPile == 'pile':
         app.piles[movedTo].extend(cardsMoving)
         app.pilesVisibility[movedTo] += 1
+        print('this is the pile the visibility is being added to', movedTo)
 
     for cardBackIndex in range(numMovingCards-1, 0, -1): # cardBackIndex is the index from back to front of the card being moved
         print('THIS IS THE CARDBACK INDEX', cardBackIndex)
@@ -432,12 +438,20 @@ def isInitialPilesSolvable(app):
         print(app.piles)
         for pileFrom in range(app.numPiles):
             if isMoveValid(app, pileFrom) != None:
-                savedState = memorizeCurrentAppState(app) # ChatGPT prompted this idea to use a saved state
+                savedState = memorizeCurrentAppState(app) # ChatGPT prompted this idea to use a separate saved state function
+                app.previousPileStates.append(app.piles)
+                app.previousPileStates.pop(0)
                 toSlotOrPile, movedTo = isMoveValid(app, pileFrom)
                 makeMove(app, pileFrom, toSlotOrPile, movedTo)
+                # this part is to check if this state has been seen before.
+                if app.piles in app.previousPileStates:
+                    undo(app, savedState)
+                    return False
+                
+                print('after visibiility', app.pilesVisibility)
                 if isInitialPilesSolvable(app):
                     return True
-                undo(app, savedState) # ChatGPT prompted this idea to have an undo function
+                undo(app, savedState) # ChatGPT prompted this idea to have a seperate undo function
         for _ in range(len(app.sideDeck) + len(app.sideDeckFlipped)):
             flipDeck(app)
             if isMoveValid(app, 'sideCard') != None:
