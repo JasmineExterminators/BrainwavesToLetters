@@ -3,6 +3,10 @@ import random
 import copy
 from PIL import Image
 import os
+import sys
+
+# Increase recursion limit
+sys.setrecursionlimit(10000)
 
 class Card:
     def __init__(self, suit, num):
@@ -23,11 +27,9 @@ def onAppStart(app):
     makeGraphicsDict(app)
     app.numPiles = 4
     app.piles = []
-    makeInitialPiles(app)
-    # while app.piles == [] or isInitialPilesSolvable(app) == 'False':
-    #     makeInitialPiles(app)
+    
     # this is the test piles:
-    # app.piles = [[('heart', 1)], [('spade', 4), ('spade', 12)], [('diamond', 13), ('diamond', 1), ('diamond', 3)], [('diamond', 12), ('clover', 12), ('clover', 6), ('spade', 1)]]
+    app.piles = [[('heart', 1)], [('spade', 4), ('spade', 13)], [('diamond', 13), ('diamond', 1), ('diamond', 12)], [('diamond', 12), ('clover', 12), ('clover', 6), ('spade', 11)]]
     app.doneSlots = [('spade',0),('heart',0),('clover',0),('diamond',0)] # use 0 cuz 1 is next after that
     app.sideCard = 'None'
     app.sideBarVerticalCardSpacing = 200
@@ -54,7 +56,9 @@ def onAppStart(app):
     app.selectedButtonAnimation = None
     app.selectedButtonAniPadding = 10
     app.percentageTongue = 0
-
+    # not button stuff anymore
+    while app.piles == [] or isInitialPilesSolvable(app) == False:
+        makeInitialPiles(app)
 
 def game_redrawAll(app):
     drawSideBar(app)
@@ -71,7 +75,6 @@ def game_redrawAll(app):
     if app.isHintMode:
         drawHint(app)
     
-
 def game_onKeyPress(app, key):
     if key == '1' or key == '2' or key == '4' or key == '5' or key == '6':
         if key == '1':
@@ -84,6 +87,7 @@ def game_onKeyPress(app, key):
             pileFrom = 3
         elif key == '6':
             pileFrom = 'sideCard'
+
 
         if isMoveValid(app, pileFrom) != None:
             print('moveValid')
@@ -243,7 +247,10 @@ def isMoveValid(app, pileFrom): # pileFrom is the index into app.piles or 'sideD
         app.errorCount += 1
         return None
     else:
-        cardToMove = app.piles[pileFrom][-1]
+        numCardsOpenInPile = app.pilesVisibility[pileFrom] #this is the card # (counting from the back) that should be checked (the first visible card in the pile)
+        print('numCardsOpen', numCardsOpenInPile, "pileFrom", pileFrom)
+        cardToMove = app.piles[pileFrom][-1*numCardsOpenInPile]
+        print('cardToMove', cardToMove)
     cardToMoveSuit = cardToMove[0]
     cardToMoveColor = getCardColor(cardToMove)
     cardToMoveNum = cardToMove[1]
@@ -261,6 +268,7 @@ def isMoveValid(app, pileFrom): # pileFrom is the index into app.piles or 'sideD
 
     for pile in range(app.numPiles):
         if pile == pileFrom:
+            print('skipping over', pile)
             continue
         if app.piles[pile] == []: 
             if cardToMoveNum == 13: # if the pile is empty, king can go in it
@@ -271,7 +279,13 @@ def isMoveValid(app, pileFrom): # pileFrom is the index into app.piles or 'sideD
         lastCardinPileColor = getCardColor(lastCardinPile)
         lastCardinPileNum = lastCardinPile[1]
         if cardToMoveColor != lastCardinPileColor and cardToMoveNum +1 == lastCardinPileNum:
+            print('I did it!')
             return 'pile', pile
+        if cardToMoveColor == lastCardinPileColor:
+            print('failed due to color, pile', pile)
+        elif cardToMoveNum +1 != lastCardinPileNum:
+            print('failed due to num, cardToMoveNum', cardToMoveNum, 'lastCardinPileNum', lastCardinPileNum, 'pile', pile)
+    print('outtaloop!')
     app.errorCount += 1
     return None
 
@@ -279,7 +293,7 @@ def getCardColor(card):
     suit = card[0]
     return 'red' if suit == 'heart' or suit == 'diamond' else 'black'
 
-def getCardLocation(app, slotOrPile, stackIndex):
+def getCardLocation(app, slotOrPile, stackIndex, cardIndexFromLow): #cardIndex is the index of card in a pile from low to high
     # these are to help calculate the card locations
     spaceForPiles = app.width - app.sidebarWidth
     spaceBetweenPiles = spaceForPiles/(app.numPiles+1)
@@ -301,52 +315,74 @@ def getCardLocation(app, slotOrPile, stackIndex):
         # below is all to get the location
         locationX = spaceBetweenPiles*(stackIndex+1) # +1 because the first one should be one space into the screen already (not at the very edge)
         numCardsInPile = len(app.piles[stackIndex])
-        locationY = app.headerHeight + app.verticalCardSpacing*(numCardsInPile-1) + app.cardHeight/2 # -1 cuz the first card is 0*spacing
+        locationY = app.headerHeight + app.verticalCardSpacing*(numCardsInPile-1-cardIndexFromLow) + app.cardHeight/2 # -1 cuz the first card is 0*spacing
         location = (locationX, locationY)
     return location
     
 def makeMove(app, pileFrom, toSlotOrPile, movedTo):
-    fromLocation = getCardLocation(app, 'pile', pileFrom) # it's always going to come from a pile cannot come from a slot
-    fromLocationX = fromLocation[0]
-    fromLocationY = fromLocation[1]
+    if isinstance(pileFrom, int):
+        numMovingCards = app.pilesVisibility[pileFrom]
+        if len(app.piles[pileFrom]) - numMovingCards == 0:
+            app.pilesVisibility[pileFrom] = 0
+        else:
+            app.pilesVisibility[pileFrom] = 1
+    else:
+        numMovingCards = 1
+    # fromLocationList = []
+    # toLocationList = []
+    
 
     if pileFrom == 'sideCard':
-        cardMoving = app.sideDeckFlipped.pop()
-        flipDeck(app)
+            cardsMoving = app.sideDeckFlipped.pop()
+            flipDeck(app)
     else:
         # do the location getting before popping so that we have the right number of cards in pile (pre-pop)
-        cardMoving = app.piles[pileFrom].pop()
+        cardsMoving = app.piles[pileFrom][-numMovingCards:] # chatGPT gave me the idea to use slicing instead of pop
+        app.piles[pileFrom] = app.piles[pileFrom][:-numMovingCards-1]
+        print('cardsMoving', cardsMoving)
     
     if toSlotOrPile == 'slot':
-        app.doneSlots[movedTo] = cardMoving
+        app.doneSlots[movedTo] = cardsMoving[0] # just index 0 cuz we know only one card can move into the slot
     elif toSlotOrPile == 'pile':
-        app.piles[movedTo].append(cardMoving)
-        app.pilesVisibility[movedTo] += 1
-    
-    toLocation = getCardLocation(app, toSlotOrPile, movedTo)
-    toLocationX = toLocation[0]
-    toLocationY = toLocation[1]
-    
-    app.isMovingAnimation = True
-    movedVertically = toLocationY - fromLocationY
-    movedHorizontally = toLocationX - fromLocationX
-    if movedVertically < 0:
-        yMoveRateSign = -1
-    else:
-        yMoveRateSign = 1
-    
-    # the if, else is to prevent from division by 0
-    if movedHorizontally == 0:
-        yMoveRate = yMoveRateSign
-    else:
-        yMoveRate = abs(movedVertically / movedHorizontally)*yMoveRateSign # this is the rate of y in comparison to 1 move of x
-    
-    if movedHorizontally < 0:
-        xMoveRateSign = -1
-    else:
-        xMoveRateSign = 1
-    app.currentlyMovingDetails = (cardMoving, xMoveRateSign, yMoveRate, fromLocation, toLocation)
-    app.currentlyMovingAniLocation = list(fromLocation) # need to turn into list so that it's mutable
+        app.piles[movedTo].extend(cardsMoving)
+        app.pilesVisibility[movedTo] += numMovingCards
+
+    for cardBackIndex in range(numMovingCards-1, 0, -1): # cardBackIndex is the index from back to front of the card being moved
+        print('THIS IS THE CARDBACK INDEX', cardBackIndex)
+        if toSlotOrPile != 'slot':
+            cardMoving = cardsMoving[cardBackIndex]
+        fromLocation = getCardLocation(app, 'pile', pileFrom, cardBackIndex) # it's always going to come from a pile cannot come from a slot
+        fromLocationX = fromLocation[0]
+        fromLocationY = fromLocation[1]
+        # fromLocationList.append(fromLocation)
+
+        
+        
+        toLocation = getCardLocation(app, toSlotOrPile, movedTo, 0)
+        toLocationX = toLocation[0]
+        toLocationY = toLocation[1]
+        # toLocationList.append(toLocation)
+        
+        app.isMovingAnimation = True
+        movedVertically = toLocationY - fromLocationY
+        movedHorizontally = toLocationX - fromLocationX
+        if movedVertically < 0:
+            yMoveRateSign = -1
+        else:
+            yMoveRateSign = 1
+        
+        # the if, else is to prevent from division by 0
+        if movedHorizontally == 0:
+            yMoveRate = yMoveRateSign
+        else:
+            yMoveRate = abs(movedVertically / movedHorizontally)*yMoveRateSign # this is the rate of y in comparison to 1 move of x
+        
+        if movedHorizontally < 0:
+            xMoveRateSign = -1
+        else:
+            xMoveRateSign = 1
+        app.currentlyMovingDetails = (cardMoving, xMoveRateSign, yMoveRate, fromLocation, toLocation)
+        app.currentlyMovingAniLocation = list(fromLocation) # need to turn into list so that it's mutable
 
 def drawSideCard(app):
     if app.sideCard != 'None':
@@ -373,11 +409,46 @@ def drawDoneSlots(app):
 
 def winCondition(app):
     for slot in range(len(app.doneSlots)):
-        if len(app.doneSlots[slot]) != 13:
+        if app.doneSlots[slot][1] != 13:
             return False
     return True
 
-# def isInitialPilesSolvable(app):
+def isInitialPilesSolvable(app):
+    if winCondition(app):
+        return True
+    else:
+        print(app.piles)
+        for pileFrom in range(app.numPiles):
+            if isMoveValid(app, pileFrom) != None:
+                savedState = memorizeCurrentAppState(app) # ChatGPT prompted this idea to use a saved state
+                toSlotOrPile, movedTo = isMoveValid(app, pileFrom)
+                makeMove(app, pileFrom, toSlotOrPile, movedTo)
+                if isInitialPilesSolvable(app):
+                    return True
+                undo(app, savedState) # ChatGPT prompted this idea to have an undo function
+        for _ in range(len(app.sideDeck) + len(app.sideDeckFlipped)):
+            flipDeck(app)
+            if isMoveValid(app, 'sideCard') != None:
+                savedState = memorizeCurrentAppState(app)
+                toSlotOrPile, movedTo = isMoveValid(app, 'sideCard')
+                makeMove(app, 'sideCard', toSlotOrPile, movedTo)
+                if isInitialPilesSolvable(app):
+                    return True
+                undo(app, savedState)
+    return False
+
+def memorizeCurrentAppState(app):
+    currentAppStateDict = {'app.piles':copy.deepcopy(app.piles), 
+                           'app.sideDeck': copy.deepcopy(app.sideDeck),
+                           'app.sideDeckFlipped': copy.deepcopy(app.sideDeckFlipped), 
+                           'app.doneSlots': copy.deepcopy(app.doneSlots)}
+    return currentAppStateDict
+
+def undo(app, savedState):
+    app.piles = savedState['app.piles']
+    app.sideDeck = savedState['app.sideDeck']
+    app.sideDeckFlipped = savedState['app.sideDeckFlipped']
+    app.doneSlots = savedState['app.doneSlots']
 
 def drawAnimateCardSlide(app):
     cardMoving = app.currentlyMovingDetails[0]
