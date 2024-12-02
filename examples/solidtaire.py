@@ -4,9 +4,15 @@ import copy
 from PIL import Image
 import os
 import sys
+from neurosity import NeurositySDK
+from dotenv import load_dotenv
+import os
+import time
 
 # Increase recursion limit
 sys.setrecursionlimit(10000)
+
+ProbabilityGlobal = 0
 
 class Card:
     def __init__(self, suit, num):
@@ -57,8 +63,9 @@ def onAppStart(app):
     app.selectedButtonAniPadding = 10
     app.percentageTongue = 0
     # not button stuff anymore
-    while app.piles == [] or isInitialPilesSolvable(app) == False:
-        makeInitialPiles(app)
+    # while app.piles == [] or isInitialPilesSolvable(app) == False:
+    #     makeInitialPiles(app)
+    
 
 def game_redrawAll(app):
     drawSideBar(app)
@@ -76,7 +83,9 @@ def game_redrawAll(app):
         drawHint(app)
     
 def game_onKeyPress(app, key):
-    if key == '1' or key == '2' or key == '4' or key == '5' or key == '6':
+    print(ProbabilityGlobal, key)
+    if key == '1' and ProbabilityGlobal >= 0.40 or key == '2' and ProbabilityGlobal >= 0.40 or key == '4' and ProbabilityGlobal >= 0.40 or key == '5' and ProbabilityGlobal >= 0.40 or key == '6' and ProbabilityGlobal >= 0.40:
+        print('pressed success')
         if key == '1':
             pileFrom = 0
         elif key == '2':
@@ -112,6 +121,8 @@ def game_onKeyPress(app, key):
         setActiveScreen('endWin')
 
 def game_onStep(app):
+    global unsubscribe
+    unsubscribe = neurosity.focus(callback)
     if app.isMovingAnimation:
         xMoveRateSign = app.currentlyMovingDetails[1]
         yMoveRate = app.currentlyMovingDetails[2]
@@ -248,6 +259,7 @@ def isMoveValid(app, pileFrom): # pileFrom is the index into app.piles or 'sideD
         return None
     else:
         numCardsOpenInPile = app.pilesVisibility[pileFrom] #this is the card # (counting from the back) that should be checked (the first visible card in the pile)
+        print('right before', app.piles)
         print('numCardsOpen', numCardsOpenInPile, "pileFrom", pileFrom)
         cardToMove = app.piles[pileFrom][-1*numCardsOpenInPile]
         print('cardToMove', cardToMove)
@@ -345,7 +357,7 @@ def makeMove(app, pileFrom, toSlotOrPile, movedTo):
         app.doneSlots[movedTo] = cardsMoving[0] # just index 0 cuz we know only one card can move into the slot
     elif toSlotOrPile == 'pile':
         app.piles[movedTo].extend(cardsMoving)
-        app.pilesVisibility[movedTo] += numMovingCards
+        app.pilesVisibility[movedTo] += 1
 
     for cardBackIndex in range(numMovingCards-1, 0, -1): # cardBackIndex is the index from back to front of the card being moved
         print('THIS IS THE CARDBACK INDEX', cardBackIndex)
@@ -531,6 +543,24 @@ def drawHint(app):
         endX, endY = app.highlightEndLocation[0], app.highlightEndLocation[1]
         drawCircle(endX, endY, 100)
 
+def callback(data):
+    # print(data.get('probability'))
+    global ProbabilityGlobal
+    ProbabilityGlobal = data.get('probability')
 
+# ____________________MAIN ________________________
+load_dotenv()
+
+neurosity = NeurositySDK({
+    "device_id": os.getenv("NEUROSITY_DEVICE_ID")
+})
+
+neurosity.login({
+    "email": os.getenv("NEUROSITY_EMAIL"),
+    "password": os.getenv("NEUROSITY_PASSWORD")
+})
+
+info = neurosity.get_info()
+print(info)
 
 runAppWithScreens(initialScreen='game')

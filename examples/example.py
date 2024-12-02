@@ -31,7 +31,7 @@ def onAppStart(appInstance):
 
 def onStep(app):
     global unsubscribe
-    unsubscribe = neurosity.calm(callback)
+    unsubscribe = neurosity.focus(callback)
     # if app.isTongue:
     #     unsubscribe = neurosity.calm(callback)
     # else:
