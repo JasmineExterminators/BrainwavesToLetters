@@ -36,8 +36,8 @@ def onAppStart(app):
     app.piles = []
     
     # this is the test piles:
-    app.piles = [[('heart', 1)], [('spade', 4), ('spade', 13)], [('diamond', 13), ('diamond', 1), ('diamond', 12)], [('diamond', 12), ('clover', 12), ('clover', 6), ('spade', 11)]]
-    app.doneSlots = [('spade',10),('heart',0),('clover',10),('diamond',0)] # use 0 cuz 1 is next after that
+    app.piles = [[('spade', 13)], [('spade', 4), ('spade', 10)], [('diamond', 13), ('diamond', 1), ('diamond', 12)], [('diamond', 12), ('clover', 12), ('clover', 6), ('spade', 11)]]
+    app.doneSlots = [('spade',9),('heart',0),('clover',10),('diamond',0)] # use 0 cuz 1 is next after that
     app.sideCard = None
     app.sideBarVerticalCardSpacing = 200
     app.pilesVisibility = [1 for _ in range(app.numPiles)] # this indicates how many cards in the pile are visible
@@ -348,7 +348,11 @@ def makeMove(app, pileFrom, toSlotOrPile, movedTo):
         cardsMoving = [app.sideDeckFlipped.pop()] # make sure it's in a list because we use extend list later.
         # Setting the sideCard to the previous card
         app.sideCard = app.sideDeckFlipped.pop()
-    else: # if from a pile
+    elif toSlotOrPile == 'slot': # if from a pile to a slot
+        numMovingCards = 1
+        cardsMoving = [app.piles[pileFrom].pop()] # just the last one cuz pile --> slot
+        app.pilesVisibility[pileFrom] -= 1
+    else: # if from a pile to a pile
         # Getting the number of moving cards
         numMovingCards = app.pilesVisibility[pileFrom] # cuz whenever we move, we will move the whole visible chain in a pile
         # Setting the visibility to the right number
