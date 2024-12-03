@@ -279,7 +279,7 @@ def isMoveValid(app, pileFrom): # pileFrom is the index into app.piles or 'sideC
     # =========== THIS PART CHECKS FOR NORMAL MOVES FROM PILE TO PILE OR SIDECARD TO PILE ============
     if pileFrom != 'sideCard': # if from one of the piles (no need to set cardToMove for sideCard cuz alr done above)
         # need to change the cardToMove to be the first visible in a pile because if moving from pile to pile, the whole chain needs to move 
-        numCardsOpenInPile = app.pilesVisibility[pileFrom] #this is the card # (counting from the back) that should be checked (the first visible card in the pile)
+        numCardsOpenInPile = app.pilesVisibility[pileFrom] #this is the card num (counting from the back) that should be checked (the first visible card in the pile)
         cardToMove = app.piles[pileFrom][-1*numCardsOpenInPile]
         cardToMoveSuit = cardToMove[0]
         cardToMoveColor = getCardColor(cardToMove)
@@ -352,14 +352,13 @@ def makeMove(app, pileFrom, toSlotOrPile, movedTo):
         numMovingCards = 1
         cardsMoving = [app.piles[pileFrom].pop()] # just the last one cuz pile --> slot
         app.pilesVisibility[pileFrom] -= 1
+        if app.pilesVisibility[pileFrom] == 0: # make sure it never goes to 0! (cuz we don't want a pile with no cards flipped over, dw, I checked to make sure if there are no cards in the pile, that condition is always taken care of before visibility comes into play)
+            app.pilesVisibility[pileFrom] = 1
     else: # if from a pile to a pile
         # Getting the number of moving cards
         numMovingCards = app.pilesVisibility[pileFrom] # cuz whenever we move, we will move the whole visible chain in a pile
-        # Setting the visibility to the right number
-        if len(app.piles[pileFrom]) - numMovingCards == 0: #if after taking away those cards to move, there will be none left, set visibility to 0
-            app.pilesVisibility[pileFrom] = 0
-        else:
-            app.pilesVisibility[pileFrom] = 1
+        # Setting the visibility to the right number (it will always be 1 because pile --> pile always move everything)
+        app.pilesVisibility[pileFrom] = 1
         # do the location getting before popping so that we have the right number of cards in pile (pre-pop)
         # Getting the cards that are moving (a list of tuples)
         cardsMoving = app.piles[pileFrom][-numMovingCards:] # chatGPT gave me the idea to use slicing instead of pop
