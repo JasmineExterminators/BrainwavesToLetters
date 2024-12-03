@@ -37,8 +37,8 @@ def onAppStart(app):
     
     # this is the test piles:
     app.piles = [[('heart', 1)], [('spade', 4), ('spade', 13)], [('diamond', 13), ('diamond', 1), ('diamond', 12)], [('diamond', 12), ('clover', 12), ('clover', 6), ('spade', 11)]]
-    app.doneSlots = [('spade',0),('heart',0),('clover',0),('diamond',0)] # use 0 cuz 1 is next after that
-    app.sideCard = 'None'
+    app.doneSlots = [('spade',10),('heart',0),('clover',10),('diamond',0)] # use 0 cuz 1 is next after that
+    app.sideCard = None
     app.sideBarVerticalCardSpacing = 200
     app.pilesVisibility = [1 for _ in range(app.numPiles)] # this indicates how many cards in the pile are visible
     app.isMovingAnimation = False
@@ -248,9 +248,10 @@ def flipDeck(app):
     app.sideCard = cardFlipped
     app.sideDeckFlipped.append(cardFlipped)
 
-def isMoveValid(app, pileFrom): # pileFrom is the index into app.piles or 'sideDeck'
+def isMoveValid(app, pileFrom): # pileFrom is the index into app.piles or 'sideCard'
+    # ============ THIS PART CHECKS IF PILE OR SIDECARD TO SLOT ===============
     if pileFrom == 'sideCard':
-        if app.sideCard == 'None':
+        if app.sideCard == None:
             print('Cannot do! No sidecard flipped!')
             app.errorCount += 1
             return None
@@ -259,26 +260,30 @@ def isMoveValid(app, pileFrom): # pileFrom is the index into app.piles or 'sideD
     elif app.piles[pileFrom] == []: # this is if the pile is empty
         app.errorCount += 1
         return None
-    else:
-        numCardsOpenInPile = app.pilesVisibility[pileFrom] #this is the card # (counting from the back) that should be checked (the first visible card in the pile)
-        print('right before', app.piles)
-        print('numCardsOpen', numCardsOpenInPile, "pileFrom", pileFrom)
-        cardToMove = app.piles[pileFrom][-1*numCardsOpenInPile]
-        print('cardToMove', cardToMove)
+    else: # if from one of the piles 
+        # cardToMove is last in pile (only last in pile can go into a slot, not the first visible if there is a chain)
+        cardToMove = app.piles[pileFrom][-1]
     cardToMoveSuit = cardToMove[0]
     cardToMoveColor = getCardColor(cardToMove)
     cardToMoveNum = cardToMove[1]
-    
+
     for slot in range(len(app.doneSlots)):
-        print('inslotloop')
         currSlotSuit = app.doneSlots[slot][0]
         currSlotNum = app.doneSlots[slot][1]
         if currSlotSuit == cardToMoveSuit:
-            print(currSlotSuit, cardToMove)
             if currSlotNum+1 == cardToMoveNum:
-                print('successful')
                 return 'slot', slot
             print('not success', currSlotNum+1, cardToMoveNum)
+
+    # Only enter this part if above doesn't return anything (if there are no valid moves moving to piles)
+    # =========== THIS PART CHECKS FOR NORMAL MOVES FROM PILE TO PILE OR SIDECARD TO PILE ============
+    if pileFrom != 'sideCard': # if from one of the piles (no need to set cardToMove for sideCard cuz alr done above)
+        # need to change the cardToMove to be the first visible in a pile because if moving from pile to pile, the whole chain needs to move 
+        numCardsOpenInPile = app.pilesVisibility[pileFrom] #this is the card # (counting from the back) that should be checked (the first visible card in the pile)
+        cardToMove = app.piles[pileFrom][-1*numCardsOpenInPile]
+        cardToMoveSuit = cardToMove[0]
+        cardToMoveColor = getCardColor(cardToMove)
+        cardToMoveNum = cardToMove[1]
 
     for pile in range(app.numPiles):
         if pile == pileFrom:
@@ -300,7 +305,7 @@ def isMoveValid(app, pileFrom): # pileFrom is the index into app.piles or 'sideD
             print('failed due to color, pile', pile)
         elif cardToMoveNum +1 != lastCardinPileNum:
             print('failed due to num, cardToMoveNum', cardToMoveNum, 'lastCardinPileNum', lastCardinPileNum, 'pile', pile)
-    print('outtaloop!')
+    
     app.errorCount += 1
     return None
 
@@ -335,9 +340,6 @@ def getCardLocation(app, slotOrPile, stackIndex, cardIndexFromLow): #cardIndex i
     return location
     
 def makeMove(app, pileFrom, toSlotOrPile, movedTo):
-    fromLocationList = []
-    toLocationList = []
-    
     # ============ THIS PART IS TO GET THE INFO ABOUT THE CARD MOVING AND WHERE IT'S FROM ================
     if pileFrom == 'sideCard': # if from sideCard
         # Getting the number of moving cards (for sideCard it can only be on at a time)
@@ -368,11 +370,15 @@ def makeMove(app, pileFrom, toSlotOrPile, movedTo):
         app.piles[movedTo].extend(cardsMoving)
         app.pilesVisibility[movedTo] += numMovingCards
 
-    for cardBackIndex in range(numMovingCards-1, 0, -1): # cardBackIndex is the index from back to front of the card being moved
-        print('THIS IS THE CARDBACK INDEX', cardBackIndex)
-        if toSlotOrPile != 'slot':
+    # ============ THIS PART IS TO GET THE LOCATIONS FROM AND TO AND ANIMATION INFO ================
+    app.currentlyMovingDetails = []
+    app.currentlyMovingAniLocations = []
+    for cardBackIndex in range(numMovingCards-1, -1, -1): # cardBackIndex is the index from back to front of the card being moved ex. if 2 cards moving, the indexes will be 1 then 0
+        if toSlotOrPile == 'pile':
             cardMoving = cardsMoving[cardBackIndex]
-        fromLocation = getCardLocation(app, 'pile', pileFrom, cardBackIndex) # it's always going to come from a pile cannot come from a slot
+        else:
+            cardMoving = cardsMoving[0]
+        fromLocation = getCardLocation(app, 'pile', pileFrom, cardBackIndex-numMovingCards) # it's always going to come from a pile cannot come from a slot, also, need to do the -numMovingCards because we popped before calculating the location, note that this may give a negative number
         fromLocationX = fromLocation[0]
         fromLocationY = fromLocation[1]
         # fromLocationList.append(fromLocation)
@@ -406,7 +412,7 @@ def makeMove(app, pileFrom, toSlotOrPile, movedTo):
         app.currentlyMovingAniLocation = list(fromLocation) # need to turn into list so that it's mutable
 
 def drawSideCard(app):
-    if app.sideCard != 'None':
+    if app.sideCard != None:
         img = Image.open(os.path.join('cardGraphicsPNG', app.cardGraphics[app.sideCard]))
         cardGraphicURL = CMUImage(img)
         sideCardX = app.width - app.sidebarWidth/2
