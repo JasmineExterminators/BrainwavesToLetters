@@ -12,7 +12,7 @@ import time
 # Increase recursion limit
 sys.setrecursionlimit(10000)
 
-ProbabilityGlobal = 0
+PROBABILITY_BRAIN = 0
 
 class Card:
     def __init__(self, suit, num):
@@ -32,7 +32,7 @@ def onAppStart(app):
     app.sideDeckFlipped = []
     makeGraphicsDict(app)
     app.numPiles = 4
-    app.probThreshold = 0.30
+    app.probThreshold = 0.20
     app.piles = []
     
     # this is the test piles:
@@ -65,8 +65,8 @@ def onAppStart(app):
     app.percentageTongue = 0
     # not button stuff anymore
     app.previousPileStates = []
-    while app.piles == [] or isInitialPilesSolvable(app) == False:
-        makeInitialPiles(app)
+    # while app.piles == [] or isInitialPilesSolvable(app) == False:
+    #     makeInitialPiles(app)
     
 
 def game_redrawAll(app):
@@ -85,8 +85,8 @@ def game_redrawAll(app):
         drawHint(app)
     
 def game_onKeyPress(app, key):
-    print(ProbabilityGlobal, key)
-    if key == '1' and ProbabilityGlobal >= app.probThreshold or key == '2' and ProbabilityGlobal >= app.probThreshold or key == '4' and ProbabilityGlobal >= app.probThreshold or key == '5' and ProbabilityGlobal >= app.probThreshold or key == '6' and ProbabilityGlobal >= app.probThreshold:
+    print(PROBABILITY_BRAIN, key)
+    if key == '1' and PROBABILITY_BRAIN >= app.probThreshold or key == '2' and PROBABILITY_BRAIN >= app.probThreshold or key == '4' and PROBABILITY_BRAIN >= app.probThreshold or key == '5' and PROBABILITY_BRAIN >= app.probThreshold or key == '6' and PROBABILITY_BRAIN >= app.probThreshold:
         print('pressed success')
         if key == '1':
             pileFrom = 0
@@ -241,7 +241,6 @@ def drawPiles(app):
 
 def flipDeck(app):
     if app.sideDeck == []:
-        print('ok')
         random.shuffle(app.sideDeckFlipped)
         app.sideDeck = copy.deepcopy(app.sideDeckFlipped)
         app.sideDeckFlipped = []
@@ -309,7 +308,7 @@ def getCardColor(card):
     suit = card[0]
     return 'red' if suit == 'heart' or suit == 'diamond' else 'black'
 
-def getCardLocation(app, slotOrPile, stackIndex, cardIndexFromLow): #cardIndex is the index of card in a pile from low to high
+def getCardLocation(app, slotOrPile, stackIndex, cardIndexFromLow): #cardIndex is the index of card in a pile from low to high, if sideCard, just do None
     # these are to help calculate the card locations
     spaceForPiles = app.width - app.sidebarWidth
     spaceBetweenPiles = spaceForPiles/(app.numPiles+1)
@@ -336,34 +335,38 @@ def getCardLocation(app, slotOrPile, stackIndex, cardIndexFromLow): #cardIndex i
     return location
     
 def makeMove(app, pileFrom, toSlotOrPile, movedTo):
-    if isinstance(pileFrom, int):
-        numMovingCards = app.pilesVisibility[pileFrom]
-        if len(app.piles[pileFrom]) - numMovingCards == 0:
+    fromLocationList = []
+    toLocationList = []
+    
+    # ============ THIS PART IS TO GET THE INFO ABOUT THE CARD MOVING AND WHERE IT'S FROM ================
+    if pileFrom == 'sideCard': # if from sideCard
+        # Getting the number of moving cards (for sideCard it can only be on at a time)
+        numMovingCards = 1
+        # Getting the cards that are moving (it will always only be one but still must be in a list)
+        cardsMoving = [app.sideDeckFlipped.pop()] # make sure it's in a list because we use extend list later.
+        # Setting the sideCard to the previous card
+        app.sideCard = app.sideDeckFlipped.pop()
+    else: # if from a pile
+        # Getting the number of moving cards
+        numMovingCards = app.pilesVisibility[pileFrom] # cuz whenever we move, we will move the whole visible chain in a pile
+        # Setting the visibility to the right number
+        if len(app.piles[pileFrom]) - numMovingCards == 0: #if after taking away those cards to move, there will be none left, set visibility to 0
             app.pilesVisibility[pileFrom] = 0
-            print('this is the pile that is biegn set to 0 visibiliyt', pileFrom)
         else:
             app.pilesVisibility[pileFrom] = 1
-    else:
-        numMovingCards = 1
-    # fromLocationList = []
-    # toLocationList = []
-    
-
-    if pileFrom == 'sideCard':
-            cardsMoving = [app.sideDeckFlipped.pop()] # make sure it's in a list because we use extend list later.
-            flipDeck(app)
-    else:
         # do the location getting before popping so that we have the right number of cards in pile (pre-pop)
+        # Getting the cards that are moving (a list of tuples)
         cardsMoving = app.piles[pileFrom][-numMovingCards:] # chatGPT gave me the idea to use slicing instead of pop
+        # Removing the moving cards from it's initial pile
         app.piles[pileFrom] = app.piles[pileFrom][:-numMovingCards] # does not need to -1 again in numMovingCards cuz its a negative index
         print('cardsMoving', cardsMoving)
     
+    # ============ THIS PART IS TO GET THE INFO ABOUT WHERE IT'S GOING ================
     if toSlotOrPile == 'slot':
         app.doneSlots[movedTo] = cardsMoving[0] # just index 0 cuz we know only one card can move into the slot
     elif toSlotOrPile == 'pile':
         app.piles[movedTo].extend(cardsMoving)
-        app.pilesVisibility[movedTo] += 1
-        print('this is the pile the visibility is being added to', movedTo)
+        app.pilesVisibility[movedTo] += numMovingCards
 
     for cardBackIndex in range(numMovingCards-1, 0, -1): # cardBackIndex is the index from back to front of the card being moved
         print('THIS IS THE CARDBACK INDEX', cardBackIndex)
@@ -533,16 +536,16 @@ def endWin_redrawAll(app):
 
 def findPossibleMovesHint(app):
     if isMoveValid(app, 'sideCard') != None:
-        app.highlightStartLocation = getCardLocation(app, 'pile', 'sideCard')
+        app.highlightStartLocation = getCardLocation(app, 'pile', 'sideCard', None)
         slotOrPile, stackIndex = isMoveValid(app, 'sideCard')
-        app.highlightEndLocation = getCardLocation(app, slotOrPile, stackIndex)
+        app.highlightEndLocation = getCardLocation(app, slotOrPile, stackIndex, 0)
         return
 
     for pile in range(len(app.piles)): # only need loop thru the piles cuz just choose a pile and automatically looks at last
         if isMoveValid(app, pile) != None:
-            app.highlightStartLocation = getCardLocation(app, 'pile', pile)
+            app.highlightStartLocation = getCardLocation(app, 'pile', pile, 0)
             slotOrPile, stackIndex = isMoveValid(app, pile)
-            app.highlightEndLocation = getCardLocation(app, slotOrPile, stackIndex)
+            app.highlightEndLocation = getCardLocation(app, slotOrPile, stackIndex, 0)
             return
     #if none work:
     app.highlightStartLocation = (app.width - app.sidebarWidth/2, app.headerHeight)
@@ -559,8 +562,8 @@ def drawHint(app):
 
 def callback(data):
     # print(data.get('probability'))
-    global ProbabilityGlobal
-    ProbabilityGlobal = data.get('probability')
+    global PROBABILITY_BRAIN
+    PROBABILITY_BRAIN = data.get('probability')
 
 # ____________________MAIN ________________________
 load_dotenv()
