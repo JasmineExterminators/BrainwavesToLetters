@@ -14,12 +14,6 @@ sys.setrecursionlimit(10000)
 
 PROBABILITY_BRAIN = 0
 
-class Card:
-    def __init__(self, suit, num):
-        self.suit = suit
-        self.number = num
-        self.color = 'red' if self.suit == 'heart' or self.suit == 'diamond' else 'black'
-
 def onAppStart(app):
     app.width = 1500
     app.height = 750
@@ -42,8 +36,9 @@ def onAppStart(app):
     app.sideBarVerticalCardSpacing = 200
     app.pilesVisibility = [1 for _ in range(app.numPiles)] # this indicates how many cards in the pile are visible
     app.isMovingAnimation = False
-    app.currentlyMovingDetails = ()
-    app.currentlyMovingAniLocation = (None, None)
+    app.currentlyMovingDetails = []
+    app.currentlyMovingAniLocations = []
+    app.currentlyMovingCardNames = []
     app.stepsPerSecond = 500
     app.isWrongMoveAnimation = False
     app.cardAngleShake = 5
@@ -124,20 +119,21 @@ def game_onKeyPress(app, key):
         setActiveScreen('endWin')
 
 def game_onStep(app):
-    global unsubscribe
+    global unsubscribe # chatGPT gave me the idea to set unsubscribe as a global var.
     unsubscribe = neurosity.focus(callback)
     if app.isMovingAnimation:
-        xMoveRateSign = app.currentlyMovingDetails[1]
-        yMoveRate = app.currentlyMovingDetails[2]
-        endLocation = app.currentlyMovingDetails[4]
-        app.currentlyMovingAniLocation[0] += xMoveRateSign*app.cardSlideRate
-        app.currentlyMovingAniLocation[1] += yMoveRate*app.cardSlideRate
-        if xMoveRateSign < 0: # moving right to left
-            if app.currentlyMovingAniLocation[0] <= endLocation[0]:
-                app.isMovingAnimation = False 
-        else: # moving left to right
-            if app.currentlyMovingAniLocation[0] >= endLocation[0]:
-                app.isMovingAnimation = False
+        for cardIdx in range(len(app.currentlyMovingDetails)):
+            xMoveRateSign = app.currentlyMovingDetails[cardIdx][1]
+            yMoveRate = app.currentlyMovingDetails[cardIdx][2]
+            endLocation = app.currentlyMovingDetails[cardIdx][4]
+            app.currentlyMovingAniLocations[cardIdx][0] += xMoveRateSign*app.cardSlideRate
+            app.currentlyMovingAniLocations[cardIdx][1] += yMoveRate*app.cardSlideRate
+            if xMoveRateSign < 0: # moving right to left
+                if app.currentlyMovingAniLocations[cardIdx][0] <= endLocation[0]:
+                    app.isMovingAnimation = False 
+            else: # moving left to right
+                if app.currentlyMovingAniLocations[cardIdx][0] >= endLocation[0]:
+                    app.isMovingAnimation = False
 
     elif app.isWrongMoveAnimation:
         app.cardAngleShake *= -1
@@ -233,7 +229,8 @@ def drawPiles(app):
                 drawAnimateWrongShake(app, app.piles[pile][card], cardX, cardY)
             
             # we are skipping drawing the card if it was just moved to new location and the sliding animation is not yet done
-            if app.isMovingAnimation and app.currentlyMovingDetails[0] == app.piles[pile][card]:
+            # chatGPT gave me the idea for this 'continue' method
+            if app.isMovingAnimation and app.piles[pile][card] in app.currentlyMovingCardNames:
                 continue
             
             drawImage(cardGraphicURL, cardX, cardY + app.cardHeight/2, 
@@ -374,24 +371,23 @@ def makeMove(app, pileFrom, toSlotOrPile, movedTo):
         app.pilesVisibility[movedTo] += numMovingCards
 
     # ============ THIS PART IS TO GET THE LOCATIONS FROM AND TO AND ANIMATION INFO ================
+    # Everytime enter makeMove, these variables will become empty again
     app.currentlyMovingDetails = []
     app.currentlyMovingAniLocations = []
+    app.currentlyMovingCardNames = []
+    # note that we'll hafta flip this list cuz the cardsMoving list is in order from front to back but we are looping through indexes from back to front in the for loop below
+    cardsMoving = cardsMoving[::-1]
     for cardBackIndex in range(numMovingCards-1, -1, -1): # cardBackIndex is the index from back to front of the card being moved ex. if 2 cards moving, the indexes will be 1 then 0
-        if toSlotOrPile == 'pile':
-            cardMoving = cardsMoving[cardBackIndex]
-        else:
-            cardMoving = cardsMoving[0]
+        # extract the card we're currently calculating for, this is to put this info into the details list later
+        cardMoving = cardsMoving[cardBackIndex]
+
         fromLocation = getCardLocation(app, 'pile', pileFrom, cardBackIndex-numMovingCards) # it's always going to come from a pile cannot come from a slot, also, need to do the -numMovingCards because we popped before calculating the location, note that this may give a negative number
         fromLocationX = fromLocation[0]
         fromLocationY = fromLocation[1]
-        # fromLocationList.append(fromLocation)
 
-        
-        
-        toLocation = getCardLocation(app, toSlotOrPile, movedTo, 0)
+        toLocation = getCardLocation(app, toSlotOrPile, movedTo, cardBackIndex)
         toLocationX = toLocation[0]
         toLocationY = toLocation[1]
-        # toLocationList.append(toLocation)
         
         app.isMovingAnimation = True
         movedVertically = toLocationY - fromLocationY
@@ -411,8 +407,10 @@ def makeMove(app, pileFrom, toSlotOrPile, movedTo):
             xMoveRateSign = -1
         else:
             xMoveRateSign = 1
-        app.currentlyMovingDetails = (cardMoving, xMoveRateSign, yMoveRate, fromLocation, toLocation)
-        app.currentlyMovingAniLocation = list(fromLocation) # need to turn into list so that it's mutable
+        app.currentlyMovingDetails.append((cardMoving, xMoveRateSign, yMoveRate, fromLocation, toLocation)) # appending the tuple
+        app.currentlyMovingAniLocations.append(list(fromLocation)) # need to turn into list so that it's mutable
+        app.currentlyMovingCardNames.append(cardMoving) # this gets a list of just the card names that are currently moving
+
 
 def drawSideCard(app):
     if app.sideCard != None:
@@ -431,8 +429,8 @@ def drawDoneSlots(app):
         doneSlotX = spaceBetweenSlots*(slot+1)
         img = Image.open(os.path.join('cardGraphicsPNG', app.cardGraphics[card]))
         cardGraphicURL = CMUImage(img)
-        if app.isMovingAnimation and app.currentlyMovingDetails[0] == card:
-
+        # chatGPT gave me the idea for this 'continue' method
+        if app.isMovingAnimation and card in app.currentlyMovingCardNames:
             continue
         drawImage(cardGraphicURL, doneSlotX, app.height - app.headerHeight - app.cardHeight/2,
                   width=app.cardWidth, height=app.cardHeight, align='center')
@@ -489,11 +487,14 @@ def undo(app, savedState):
     app.doneSlots = savedState['app.doneSlots']
 
 def drawAnimateCardSlide(app):
-    cardMoving = app.currentlyMovingDetails[0]
-    img = Image.open(os.path.join('cardGraphicsPNG', app.cardGraphics[cardMoving]))
-    cardGraphicURL = CMUImage(img)
-    drawImage(cardGraphicURL, app.currentlyMovingAniLocation[0], app.currentlyMovingAniLocation[1], 
-              width=app.cardWidth, height=app.cardHeight, align='center')
+    for cardIdx in range(len(app.currentlyMovingDetails)): # cardIdx is the idx of the list of cards moving
+        cardMoving = app.currentlyMovingDetails[cardIdx][0]
+        img = Image.open(os.path.join('cardGraphicsPNG', app.cardGraphics[cardMoving]))
+        cardGraphicURL = CMUImage(img)
+        drawImage(cardGraphicURL, app.currentlyMovingAniLocations[cardIdx][0], app.currentlyMovingAniLocations[cardIdx][1], 
+                    width=app.cardWidth, height=app.cardHeight, align='center')
+        print(app.currentlyMovingDetails,'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA')
+        print(app.currentlyMovingAniLocations, 'BBBBBBBBBBBBBBBBBBBBB')
 
 def drawAnimateWrongShake(app, card, cardX, cardY):
     cardGraphicURL = app.cardGraphics[card]
