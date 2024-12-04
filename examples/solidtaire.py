@@ -10,7 +10,7 @@ import os
 import time
 
 # Increase recursion limit
-sys.setrecursionlimit(10000)
+sys.setrecursionlimit(2000)
 
 PROBABILITY_BRAIN = 0
 
@@ -32,7 +32,7 @@ def onAppStart(app):
     
     # this is the test piles:
     # app.piles = [[('spade', 13)], [('spade', 4), ('spade', 10)], [('diamond', 13), ('diamond', 1), ('diamond', 12)], [('diamond', 12), ('clover', 12), ('clover', 6), ('spade', 11)]]
-    app.doneSlots = [('spade',9),('heart',0),('clover',10),('diamond',0)] # use 0 cuz 1 is next after that
+    app.doneSlots = [('spade',0),('heart',0),('clover',0),('diamond',0)] # use 0 cuz 1 is next after that
     app.sideCard = None
     app.sideBarVerticalCardSpacing = 200
     app.pilesVisibility = [1 for _ in range(app.numPiles)] # this indicates how many cards in the pile are visible
@@ -279,6 +279,7 @@ def isMoveValid(app, pileFrom): # pileFrom is the index into app.piles or 'sideC
         # need to change the cardToMove to be the first visible in a pile because if moving from pile to pile, the whole chain needs to move 
         print('visib', app.pilesVisibility, 'piles', app.piles, 'pileFrom', pileFrom)
         numCardsOpenInPile = app.pilesVisibility[pileFrom] #this is the card num (counting from the back) that should be checked (the first visible card in the pile)
+        print('PILEFROM AND NUMCARDSOPEN IN PILE', pileFrom, numCardsOpenInPile)
         cardToMove = app.piles[pileFrom][-1*numCardsOpenInPile]
         cardToMoveSuit = cardToMove[0]
         cardToMoveColor = getCardColor(cardToMove)
@@ -339,6 +340,7 @@ def getCardLocation(app, slotOrPile, stackIndex, cardIndexFromLow): #cardIndex i
     return location
     
 def makeMove(app, pileFrom, toSlotOrPile, movedTo):
+    print('HEY WERE ABOUT TO MAKE THE MOVE FROM PILE', pileFrom, 'TO', toSlotOrPile, movedTo)
     # ============ THIS PART IS TO GET THE INFO ABOUT THE CARD MOVING AND WHERE IT'S FROM ================
     if pileFrom == 'sideCard': # if from sideCard
         # Getting the number of moving cards (for sideCard it can only be on at a time)
@@ -353,9 +355,13 @@ def makeMove(app, pileFrom, toSlotOrPile, movedTo):
     elif toSlotOrPile == 'slot': # if from a pile to a slot
         numMovingCards = 1
         cardsMoving = [app.piles[pileFrom].pop()] # just the last one cuz pile --> slot
-        app.pilesVisibility[pileFrom] -= 1
-        if app.pilesVisibility[pileFrom] == 0: # make sure it never goes to 0! (cuz we don't want a pile with no cards flipped over, dw, I checked to make sure if there are no cards in the pile, that condition is always taken care of before visibility comes into play)
-            app.pilesVisibility[pileFrom] = 1
+        if app.piles[pileFrom] == []: # now empty pile
+            app.pilesVisibility[pileFrom] = 0
+        elif app.pilesVisibility[pileFrom] == 1: # if it's visibility was 1, stay at always 1 open (make sure it never goes to 0! (cuz we don't want a pile with no cards flipped over)
+            pass
+        else:
+            app.pilesVisibility[pileFrom] -= 1
+
     else: # if from a pile to a pile
         # Getting the number of moving cards
         numMovingCards = app.pilesVisibility[pileFrom] # cuz whenever we move, we will move the whole visible chain in a pile
@@ -374,8 +380,9 @@ def makeMove(app, pileFrom, toSlotOrPile, movedTo):
     elif toSlotOrPile == 'pile':
         app.piles[movedTo].extend(cardsMoving)
         app.pilesVisibility[movedTo] += numMovingCards
+        print('MOVING', numMovingCards)
         # this is to make sure there's never more visible cards than there are cards in the pile
-        if app.pilesVisibility[movedTo] > len(app.piles[movedTo]):
+        if app.pilesVisibility[movedTo]  > len(app.piles[movedTo]):
             app.pilesVisibility[movedTo] = len(app.piles[movedTo])
 
     # ============ THIS PART IS TO GET THE LOCATIONS FROM AND TO AND ANIMATION INFO ================
@@ -418,6 +425,7 @@ def makeMove(app, pileFrom, toSlotOrPile, movedTo):
         app.currentlyMovingDetails.append((cardMoving, xMoveRateSign, yMoveRate, fromLocation, toLocation)) # appending the tuple
         app.currentlyMovingAniLocations.append(list(fromLocation)) # need to turn into list so that it's mutable
         app.currentlyMovingCardNames.append(cardMoving) # this gets a list of just the card names that are currently moving
+    print('DONESIES SLOTS', app.doneSlots)
 
 
 def drawSideCard(app):
@@ -457,13 +465,14 @@ def isInitialPilesSolvable(app):
             if isMoveValid(app, pileFrom) != None:
                 savedState = memorizeCurrentAppState(app) # ChatGPT prompted this idea to use a separate saved state function
                 app.previousPileStates.append(app.piles)
-                app.previousPileStates.pop(0)
+                # TO DO: make it so that only memorizing two states at a time!
                 toSlotOrPile, movedTo = isMoveValid(app, pileFrom)
                 makeMove(app, pileFrom, toSlotOrPile, movedTo)
                 # this part is to check if this state has been seen before.
                 if app.piles in app.previousPileStates:
+                    print('WENT INTO IF KING MOVING AROUND LOOP')
                     undo(app, savedState)
-                    return False
+                    continue
                 
                 if isInitialPilesSolvable(app):
                     return True
