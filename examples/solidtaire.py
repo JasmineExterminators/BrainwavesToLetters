@@ -29,8 +29,9 @@ def onAppStart(app):
     app.probThreshold = 0.20
     app.piles = []
     
+    
     # this is the test piles:
-    app.piles = [[('spade', 13)], [('spade', 4), ('spade', 10)], [('diamond', 13), ('diamond', 1), ('diamond', 12)], [('diamond', 12), ('clover', 12), ('clover', 6), ('spade', 11)]]
+    # app.piles = [[('spade', 13)], [('spade', 4), ('spade', 10)], [('diamond', 13), ('diamond', 1), ('diamond', 12)], [('diamond', 12), ('clover', 12), ('clover', 6), ('spade', 11)]]
     app.doneSlots = [('spade',9),('heart',0),('clover',10),('diamond',0)] # use 0 cuz 1 is next after that
     app.sideCard = None
     app.sideBarVerticalCardSpacing = 200
@@ -60,6 +61,9 @@ def onAppStart(app):
     app.percentageTongue = 0
     # not button stuff anymore
     app.previousPileStates = []
+    makeInitialPiles(app)
+    if isInitialPilesSolvable(app) == False:
+        print('ALOHAAA ITS NOT WORKEDDDD')
     # while app.piles == [] or isInitialPilesSolvable(app) == False:
     #     makeInitialPiles(app)
     
@@ -146,9 +150,7 @@ def makeFullDeck(app): # making a list of all the cards in a deck of normal play
             app.fullDeck.append((suit,number))
 
 def makeInitialPiles(app): # setting up the piles of a new game
-    print(app.piles)
     app.piles = []
-    print(app.piles)
     for _ in range(app.numPiles):
         app.piles.append([])
     for i in range(len(app.piles)): # i is the pile we are on (ex. pile 1, pile 2, etc.)
@@ -248,7 +250,7 @@ def isMoveValid(app, pileFrom): # pileFrom is the index into app.piles or 'sideC
     # ============ THIS PART CHECKS IF PILE OR SIDECARD TO SLOT ===============
     if pileFrom == 'sideCard':
         if app.sideCard == None:
-            print('Cannot do! No sidecard flipped!')
+            # print('Cannot do! No sidecard flipped!')
             app.errorCount += 1
             return None
         else:
@@ -269,12 +271,13 @@ def isMoveValid(app, pileFrom): # pileFrom is the index into app.piles or 'sideC
         if currSlotSuit == cardToMoveSuit:
             if currSlotNum+1 == cardToMoveNum:
                 return 'slot', slot
-            print('not success', currSlotNum+1, cardToMoveNum)
+            # print('not success', currSlotNum+1, cardToMoveNum)
 
     # Only enter this part if above doesn't return anything (if there are no valid moves moving to piles)
     # =========== THIS PART CHECKS FOR NORMAL MOVES FROM PILE TO PILE OR SIDECARD TO PILE ============
     if pileFrom != 'sideCard': # if from one of the piles (no need to set cardToMove for sideCard cuz alr done above)
         # need to change the cardToMove to be the first visible in a pile because if moving from pile to pile, the whole chain needs to move 
+        print('visib', app.pilesVisibility, 'piles', app.piles, 'pileFrom', pileFrom)
         numCardsOpenInPile = app.pilesVisibility[pileFrom] #this is the card num (counting from the back) that should be checked (the first visible card in the pile)
         cardToMove = app.piles[pileFrom][-1*numCardsOpenInPile]
         cardToMoveSuit = cardToMove[0]
@@ -283,7 +286,7 @@ def isMoveValid(app, pileFrom): # pileFrom is the index into app.piles or 'sideC
 
     for pile in range(app.numPiles):
         if pile == pileFrom:
-            print('skipping over', pile)
+            # print('skipping over', pile)
             continue
         if app.piles[pile] == []: 
             if cardToMoveNum == 13: # if the pile is empty, king can go in it
@@ -291,16 +294,16 @@ def isMoveValid(app, pileFrom): # pileFrom is the index into app.piles or 'sideC
             else: # skip over any piles that are empty
                 continue 
         lastCardinPile = app.piles[pile][-1]
-        print('lastCardInPile', lastCardinPile)
+        # print('lastCardInPile', lastCardinPile)
         lastCardinPileColor = getCardColor(lastCardinPile)
         lastCardinPileNum = lastCardinPile[1]
         if cardToMoveColor != lastCardinPileColor and cardToMoveNum +1 == lastCardinPileNum:
-            print('I did it!')
+            print('Move successful')
             return 'pile', pile
-        if cardToMoveColor == lastCardinPileColor:
-            print('failed due to color, pile', pile)
-        elif cardToMoveNum +1 != lastCardinPileNum:
-            print('failed due to num, cardToMoveNum', cardToMoveNum, 'lastCardinPileNum', lastCardinPileNum, 'pile', pile)
+        # if cardToMoveColor == lastCardinPileColor:
+        #     print('failed due to color, pile', pile)
+        # elif cardToMoveNum +1 != lastCardinPileNum:
+        #     print('failed due to num, cardToMoveNum', cardToMoveNum, 'lastCardinPileNum', lastCardinPileNum, 'pile', pile)
     
     app.errorCount += 1
     return None
@@ -342,8 +345,11 @@ def makeMove(app, pileFrom, toSlotOrPile, movedTo):
         numMovingCards = 1
         # Getting the cards that are moving (it will always only be one but still must be in a list)
         cardsMoving = [app.sideDeckFlipped.pop()] # make sure it's in a list because we use extend list later.
-        # Setting the sideCard to the previous card
-        app.sideCard = app.sideDeckFlipped.pop()
+        # Setting the sideCard to the previous card (as long as there was one)
+        if app.sideDeckFlipped == []:
+            app.sideCard = None
+        else:
+            app.sideCard = app.sideDeckFlipped.pop()
     elif toSlotOrPile == 'slot': # if from a pile to a slot
         numMovingCards = 1
         cardsMoving = [app.piles[pileFrom].pop()] # just the last one cuz pile --> slot
@@ -360,7 +366,7 @@ def makeMove(app, pileFrom, toSlotOrPile, movedTo):
         cardsMoving = app.piles[pileFrom][-numMovingCards:] # chatGPT gave me the idea to use slicing instead of pop
         # Removing the moving cards from it's initial pile
         app.piles[pileFrom] = app.piles[pileFrom][:-numMovingCards] # does not need to -1 again in numMovingCards cuz its a negative index
-        print('cardsMoving', cardsMoving)
+        # print('cardsMoving', cardsMoving)
     
     # ============ THIS PART IS TO GET THE INFO ABOUT WHERE IT'S GOING ================
     if toSlotOrPile == 'slot':
@@ -368,6 +374,9 @@ def makeMove(app, pileFrom, toSlotOrPile, movedTo):
     elif toSlotOrPile == 'pile':
         app.piles[movedTo].extend(cardsMoving)
         app.pilesVisibility[movedTo] += numMovingCards
+        # this is to make sure there's never more visible cards than there are cards in the pile
+        if app.pilesVisibility[movedTo] > len(app.piles[movedTo]):
+            app.pilesVisibility[movedTo] = len(app.piles[movedTo])
 
     # ============ THIS PART IS TO GET THE LOCATIONS FROM AND TO AND ANIMATION INFO ================
     # Everytime enter makeMove, these variables will become empty again
@@ -444,7 +453,6 @@ def isInitialPilesSolvable(app):
     if winCondition(app):
         return True
     else:
-        print(app.piles)
         for pileFrom in range(app.numPiles):
             if isMoveValid(app, pileFrom) != None:
                 savedState = memorizeCurrentAppState(app) # ChatGPT prompted this idea to use a separate saved state function
@@ -457,7 +465,6 @@ def isInitialPilesSolvable(app):
                     undo(app, savedState)
                     return False
                 
-                print('after visibiility', app.pilesVisibility)
                 if isInitialPilesSolvable(app):
                     return True
                 undo(app, savedState) # ChatGPT prompted this idea to have a seperate undo function
