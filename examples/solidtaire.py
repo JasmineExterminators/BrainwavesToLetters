@@ -94,7 +94,6 @@ def game_onKeyPress(app, key):
         elif key == '6':
             pileFrom = 'sideCard'
 
-
         if isMoveValid(app, pileFrom) != None:
             print('moveValid')
             toSlotOrPile, movedTo = isMoveValid(app, pileFrom)
@@ -493,8 +492,6 @@ def drawAnimateCardSlide(app):
         cardGraphicURL = CMUImage(img)
         drawImage(cardGraphicURL, app.currentlyMovingAniLocations[cardIdx][0], app.currentlyMovingAniLocations[cardIdx][1], 
                     width=app.cardWidth, height=app.cardHeight, align='center')
-        print(app.currentlyMovingDetails,'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA')
-        print(app.currentlyMovingAniLocations, 'BBBBBBBBBBBBBBBBBBBBB')
 
 def drawAnimateWrongShake(app, card, cardX, cardY):
     cardGraphicURL = app.cardGraphics[card]
