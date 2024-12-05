@@ -62,16 +62,16 @@ def onAppStart(app):
     app.percentageTongue = 0
     # not button stuff anymore
     app.previousGameStates = []
-    # makeInitialPiles(app)
+    makeInitialPiles(app)
     # solveable test case chatGPT gave me
     # app.piles = [[('heart', 5)], [('spade', 9), ('spade', 10)], [('spade', 12), ('clover', 4), ('diamond', 2)], [('spade', 3), ('clover', 8), ('heart', 13), ('diamond', 6)]]
     
-    app.piles = [[('heart', 1)], [('spade', 2), ('spade', 1)], [('spade', 12), ('clover', 1), ('diamond', 1)], [('spade', 3), ('clover', 2), ('heart', 2), ('diamond', 2)]]
-    for pile in range(len(app.piles)):
-        for card in range(len(app.piles[pile])):
-            app.sideDeck.remove(app.piles[pile][card])
-    app.sideDeck[20] = ('diamond', 13)
-    app.sideDeck[-1] = ('heart', 3)
+    # app.piles = [[('heart', 1)], [('spade', 2), ('spade', 1)], [('spade', 12), ('clover', 1), ('diamond', 1)], [('spade', 3), ('clover', 2), ('heart', 2), ('diamond', 2)]]
+    # for pile in range(len(app.piles)):
+    #     for card in range(len(app.piles[pile])):
+    #         app.sideDeck.remove(app.piles[pile][card])
+    # app.sideDeck[20] = ('diamond', 13)
+    # app.sideDeck[-1] = ('heart', 3)
     print(app.piles)
     print(app.sideDeck)
     if isInitialPilesSolvable(app) == False:
@@ -483,10 +483,9 @@ def isInitialPilesSolvable(app):
             if isMoveValid(app, 'sideCard') != None:
                 savedState = memorizeCurrentAppState(app)
                 toSlotOrPile, movedTo = isMoveValid(app, 'sideCard')
-                # print('RIGHT BEFORE SIDECARD MOVE current sideCard sideDeck and flippedsidedeck', app.sideCard, app.sideDeck, app.sideDeckFlipped)
-                # print('RIGHT BEFORE SIDECARD MOVE', 'visib', app.pilesVisibility, 'piles', app.piles)
-                # print('DONESIES SLOTS RIGHT BEFORE SIDECARD MOVE', app.doneSlots)
                 makeMove(app, 'sideCard', toSlotOrPile, movedTo)
+                
+                # THE GOLDEN DEBUGGING BLOCK
                 cardsInPile = 0
                 for pile in range(len(app.piles)):
                     for card in app.piles[pile]:
@@ -496,24 +495,10 @@ def isInitialPilesSolvable(app):
                 for slot in app.doneSlots:
                     cardsInSlots += slot[1]
                 print('SIZEEEEEE', cardsInPile+cardsInSide+cardsInSlots)
-                # print('RIGHT AFTER SIDECARD MOVE current sideCard sideDeck and flippedsidedeck', app.sideCard, app.sideDeck, app.sideDeckFlipped)
-                # print('RIGHT AFTER SIDECARD MOVE', 'visib', app.pilesVisibility, 'piles', app.piles)
-                # print('DONESIES SLOTS RIGHT AFTER SIDECARD MOVE', app.doneSlots)
-                if isInitialPilesSolvable(app):
+
+                if isInitialPilesSolvable(app) != False:
                     return True
-                # print(f'''BEFORE UNDO:
-                # piles {app.piles}
-                # slots {app.doneSlots}
-                # sideDeck {app.sideDeck}
-                # sideDeckFlipped{app.sideDeckFlipped}''')
-                # print("SAVED STATE before undo:", savedState)
                 undo(app, savedState)
-                # print('WE UNDOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOED')
-                # print(f'''AFTER UNDO:
-                # piles {app.piles}
-                # slots {app.doneSlots}
-                # sideDeck {app.sideDeck}
-                # sideDeckFlipped{app.sideDeckFlipped}''')
                 
 
         for pileFrom in range(app.numPiles):
@@ -527,6 +512,7 @@ def isInitialPilesSolvable(app):
                 toSlotOrPile, movedTo = isMoveValid(app, pileFrom)
                 makeMove(app, pileFrom, toSlotOrPile, movedTo)
 
+                # THIS PART IS THE GOLDEN DEBUGGING BLOCK!
                 cardsInPile = 0
                 for pile in range(len(app.piles)):
                     for card in app.piles[pile]:
@@ -537,44 +523,18 @@ def isInitialPilesSolvable(app):
                     cardsInSlots += slot[1]
                 print('SIZEEEEEE', cardsInPile+cardsInSide+cardsInSlots)
 
-                # print('right after make move','visib', app.pilesVisibility, 'piles', app.piles, 'pileFrom', pileFrom)
                 # this part is to check if this state has been seen before.
                 if toSlotOrPile == 'pile': # not if going into a slot
                     if (app.piles, app.doneSlots) in app.previousGameStates:
-                        # print('WENT INTO IF KING MOVING AROUND LOOP')
-                        # print('PREVIOUS STATES!', app.previousGameStates)
-                        # print(f'''BEFORE UNDO:
-                        # piles {app.piles}
-                        # slots {app.doneSlots}
-                        # sideDeck {app.sideDeck}
-                        # sideDeckFlipped{app.sideDeckFlipped}''')
-                        # print("SAVED STATE before undo:", savedState)
                         undo(app, savedState)
-                        # print('WE UNDOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOED')
-                        # print(f'''AFTER UNDO:
-                        # piles {app.piles}
-                        # slots {app.doneSlots}
-                        # sideDeck {app.sideDeck}
-                        # sideDeckFlipped{app.sideDeckFlipped}''')
                         continue
                 
-                if isInitialPilesSolvable(app):
+                if isInitialPilesSolvable(app) != False:
                     return True
-                # print(f'''BEFORE UNDO:
-                # piles {app.piles}
-                # slots {app.doneSlots}
-                # sideDeck {app.sideDeck}
-                # sideDeckFlipped{app.sideDeckFlipped}''')
-                # print("SAVED STATE before undo:", savedState)
                 undo(app, savedState)
-                # print('WE UNDOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOED')
-                # print(f'''AFTER UNDO:
-                # piles {app.piles}
-                # slots {app.doneSlots}
-                # sideDeck {app.sideDeck}
-                # sideDeckFlipped{app.sideDeckFlipped}''')
+
         
-    return False
+        return False
 
 def memorizeCurrentAppState(app):
     currentAppStateDict = {'app.piles':copy.deepcopy(app.piles),
