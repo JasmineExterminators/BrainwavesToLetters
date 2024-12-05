@@ -60,10 +60,21 @@ def onAppStart(app):
     app.selectedButtonAniPadding = 10
     app.percentageTongue = 0
     # not button stuff anymore
-    app.previousPileStates = []
-    makeInitialPiles(app)
+    app.previousGameStates = []
+    # makeInitialPiles(app)
+    # solveable test case chatGPT gave me
+    # app.piles = [[('heart', 5)], [('spade', 9), ('spade', 10)], [('spade', 12), ('clover', 4), ('diamond', 2)], [('spade', 3), ('clover', 8), ('heart', 13), ('diamond', 6)]]
+    app.piles = [[('heart', 1)], [('spade', 2), ('spade', 1)], [('spade', 12), ('clover', 1), ('diamond', 1)], [('spade', 3), ('clover', 2), ('heart', 2), ('diamond', 2)]]
+
+    for pile in range(len(app.piles)):
+        for card in range(len(app.piles[pile])):
+            app.sideDeck.remove(app.piles[pile][card])
+    print(app.piles)
+    print(app.sideDeck)
     if isInitialPilesSolvable(app) == False:
         print('ALOHAAA ITS NOT WORKEDDDD')
+    else:
+        print('YIPEEE')
     # while app.piles == [] or isInitialPilesSolvable(app) == False:
     #     makeInitialPiles(app)
     
@@ -238,7 +249,10 @@ def drawPiles(app):
                       width=app.cardWidth, height=app.cardHeight, align='center')
 
 def flipDeck(app):
-    if app.sideDeck == []:
+    if app.sideDeck == [] and app.sideDeckFlipped == []:
+        app.sideCard = None
+        return
+    elif app.sideDeck == []:
         random.shuffle(app.sideDeckFlipped)
         app.sideDeck = copy.deepcopy(app.sideDeckFlipped)
         app.sideDeckFlipped = []
@@ -277,9 +291,8 @@ def isMoveValid(app, pileFrom): # pileFrom is the index into app.piles or 'sideC
     # =========== THIS PART CHECKS FOR NORMAL MOVES FROM PILE TO PILE OR SIDECARD TO PILE ============
     if pileFrom != 'sideCard': # if from one of the piles (no need to set cardToMove for sideCard cuz alr done above)
         # need to change the cardToMove to be the first visible in a pile because if moving from pile to pile, the whole chain needs to move 
-        print('visib', app.pilesVisibility, 'piles', app.piles, 'pileFrom', pileFrom)
         numCardsOpenInPile = app.pilesVisibility[pileFrom] #this is the card num (counting from the back) that should be checked (the first visible card in the pile)
-        print('PILEFROM AND NUMCARDSOPEN IN PILE', pileFrom, numCardsOpenInPile)
+        # print('PILEFROM AND NUMCARDSOPEN IN PILE', pileFrom, numCardsOpenInPile)
         cardToMove = app.piles[pileFrom][-1*numCardsOpenInPile]
         cardToMoveSuit = cardToMove[0]
         cardToMoveColor = getCardColor(cardToMove)
@@ -299,7 +312,7 @@ def isMoveValid(app, pileFrom): # pileFrom is the index into app.piles or 'sideC
         lastCardinPileColor = getCardColor(lastCardinPile)
         lastCardinPileNum = lastCardinPile[1]
         if cardToMoveColor != lastCardinPileColor and cardToMoveNum +1 == lastCardinPileNum:
-            print('Move successful')
+            print('Move successful, moving', cardToMove)
             return 'pile', pile
         # if cardToMoveColor == lastCardinPileColor:
         #     print('failed due to color, pile', pile)
@@ -461,45 +474,66 @@ def isInitialPilesSolvable(app):
     if winCondition(app):
         return True
     else:
-        for pileFrom in range(app.numPiles):
-            if isMoveValid(app, pileFrom) != None:
-                savedState = memorizeCurrentAppState(app) # ChatGPT prompted this idea to use a separate saved state function
-                app.previousPileStates.append(app.piles)
-                # TO DO: make it so that only memorizing two states at a time!
-                toSlotOrPile, movedTo = isMoveValid(app, pileFrom)
-                makeMove(app, pileFrom, toSlotOrPile, movedTo)
-                # this part is to check if this state has been seen before.
-                if app.piles in app.previousPileStates:
-                    print('WENT INTO IF KING MOVING AROUND LOOP')
-                    undo(app, savedState)
-                    continue
-                
-                if isInitialPilesSolvable(app):
-                    return True
-                undo(app, savedState) # ChatGPT prompted this idea to have a seperate undo function
+        print('this is the sideDeck', app.sideDeck, app.sideDeckFlipped)
         for _ in range(len(app.sideDeck) + len(app.sideDeckFlipped)):
             flipDeck(app)
             if isMoveValid(app, 'sideCard') != None:
                 savedState = memorizeCurrentAppState(app)
                 toSlotOrPile, movedTo = isMoveValid(app, 'sideCard')
                 makeMove(app, 'sideCard', toSlotOrPile, movedTo)
+                print('current sideCard sideDeck and flippedsidedeck', app.sideCard, app.sideDeck, app.sideDeckFlipped)
+                print('right after make sideCard move', 'visib', app.pilesVisibility, 'piles', app.piles)
                 if isInitialPilesSolvable(app):
                     return True
-                undo(app, savedState)
+                # undo(app, savedState)
+                # print('WE UNDOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOED')
+
+        for pileFrom in range(app.numPiles):
+            if isMoveValid(app, pileFrom) != None:
+                savedState = memorizeCurrentAppState(app) # ChatGPT prompted this idea to use a separate saved state function
+                app.previousGameStates.append((app.piles, app.doneSlots))
+                if len(app.previousGameStates) > 2:
+                    app.previousGameStates.pop(0)
+                
+                # TO DO: make it so that only memorizing two states at a time!
+                toSlotOrPile, movedTo = isMoveValid(app, pileFrom)
+                makeMove(app, pileFrom, toSlotOrPile, movedTo)
+                print('right after make move','visib', app.pilesVisibility, 'piles', app.piles, 'pileFrom', pileFrom)
+                # this part is to check if this state has been seen before.
+                if toSlotOrPile == 'pile': # not if going into a slot
+                    if (app.piles, app.doneSlots) in app.previousGameStates:
+                        print('WENT INTO IF KING MOVING AROUND LOOP')
+                        print('PREVIOUS STATES!', app.previousGameStates)
+                        print('piles', app.piles)
+                        undo(app, savedState)
+                        print('WE UNDOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOED')
+                        continue
+                
+                if isInitialPilesSolvable(app):
+                    return True
+                undo(app, savedState) # ChatGPT prompted this idea to have a seperate undo function
+                print('WE UNDOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOED')
+        
     return False
 
 def memorizeCurrentAppState(app):
-    currentAppStateDict = {'app.piles':copy.deepcopy(app.piles), 
+    currentAppStateDict = {'app.piles':copy.deepcopy(app.piles),
+                            'app.sideCard': app.sideCard,
                            'app.sideDeck': copy.deepcopy(app.sideDeck),
                            'app.sideDeckFlipped': copy.deepcopy(app.sideDeckFlipped), 
-                           'app.doneSlots': copy.deepcopy(app.doneSlots)}
+                           'app.doneSlots': copy.deepcopy(app.doneSlots),
+                           'app.pilesVisibility': copy.deepcopy(app.pilesVisibility)}
     return currentAppStateDict
 
 def undo(app, savedState):
     app.piles = savedState['app.piles']
+    app.sideCard = savedState['app.sideCard']
     app.sideDeck = savedState['app.sideDeck']
     app.sideDeckFlipped = savedState['app.sideDeckFlipped']
     app.doneSlots = savedState['app.doneSlots']
+    app.pilesVisibility = savedState['app.pilesVisibility']
+    if len(app.previousGameStates) > 0:
+        app.previousGameStates.pop()
 
 def drawAnimateCardSlide(app):
     for cardIdx in range(len(app.currentlyMovingDetails)): # cardIdx is the idx of the list of cards moving
