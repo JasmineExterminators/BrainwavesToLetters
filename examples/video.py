@@ -49,6 +49,7 @@ while True:
     if cv.waitKey(10) == 27:
         break
 
+        # the code below comes from: https://medium.com/@amit25173/opencv-eye-tracking-aeb4f1b46aa3
     gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
     
     faces = face_cascade.detectMultiScale(gray, 1.3, 5)

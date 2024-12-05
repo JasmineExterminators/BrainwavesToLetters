@@ -8,6 +8,7 @@ from neurosity import NeurositySDK
 from dotenv import load_dotenv
 import os
 import time
+import cv2 as cv
 
 # Increase recursion limit
 sys.setrecursionlimit(2000)
@@ -64,17 +65,20 @@ def onAppStart(app):
     # makeInitialPiles(app)
     # solveable test case chatGPT gave me
     # app.piles = [[('heart', 5)], [('spade', 9), ('spade', 10)], [('spade', 12), ('clover', 4), ('diamond', 2)], [('spade', 3), ('clover', 8), ('heart', 13), ('diamond', 6)]]
+    
     app.piles = [[('heart', 1)], [('spade', 2), ('spade', 1)], [('spade', 12), ('clover', 1), ('diamond', 1)], [('spade', 3), ('clover', 2), ('heart', 2), ('diamond', 2)]]
-
     for pile in range(len(app.piles)):
         for card in range(len(app.piles[pile])):
             app.sideDeck.remove(app.piles[pile][card])
+    app.sideDeck[20] = ('diamond', 13)
+    app.sideDeck[-1] = ('heart', 3)
     print(app.piles)
     print(app.sideDeck)
     if isInitialPilesSolvable(app) == False:
         print('ALOHAAA ITS NOT WORKEDDDD')
     else:
         print('YIPEEE')
+    
     # while app.piles == [] or isInitialPilesSolvable(app) == False:
     #     makeInitialPiles(app)
     
@@ -134,7 +138,7 @@ def game_onKeyPress(app, key):
 
 def game_onStep(app):
     global unsubscribe # chatGPT gave me the idea to set unsubscribe as a global var.
-    unsubscribe = neurosity.focus(callback)
+    unsubscribe = neurosity.kinesis("rightArm", callback)
     if app.isMovingAnimation:
         for cardIdx in range(len(app.currentlyMovingDetails)):
             xMoveRateSign = app.currentlyMovingDetails[cardIdx][1]
@@ -311,7 +315,7 @@ def isMoveValid(app, pileFrom): # pileFrom is the index into app.piles or 'sideC
         lastCardinPileColor = getCardColor(lastCardinPile)
         lastCardinPileNum = lastCardinPile[1]
         if cardToMoveColor != lastCardinPileColor and cardToMoveNum +1 == lastCardinPileNum:
-            print('Move successful, moving', cardToMove)
+            # print('Move successful, moving', cardToMove)
             return 'pile', pile
         # if cardToMoveColor == lastCardinPileColor:
         #     print('failed due to color, pile', pile)
@@ -363,7 +367,8 @@ def makeMove(app, pileFrom, toSlotOrPile, movedTo):
         if app.sideDeckFlipped == []:
             app.sideCard = None
         else:
-            app.sideCard = app.sideDeckFlipped.pop()
+            # This was the problem!! Cannot just pop agaiin cuz the sideDeckFlipped is supposed to have app.sideCard in it!!!!!!!!!!!
+            app.sideCard = app.sideDeckFlipped[-1]
     elif toSlotOrPile == 'slot': # if from a pile to a slot
         numMovingCards = 1
         cardsMoving = [app.piles[pileFrom].pop()] # just the last one cuz pile --> slot
@@ -437,7 +442,7 @@ def makeMove(app, pileFrom, toSlotOrPile, movedTo):
         app.currentlyMovingDetails.append((cardMoving, xMoveRateSign, yMoveRate, fromLocation, toLocation)) # appending the tuple
         app.currentlyMovingAniLocations.append(list(fromLocation)) # need to turn into list so that it's mutable
         app.currentlyMovingCardNames.append(cardMoving) # this gets a list of just the card names that are currently moving
-    print('DONESIES SLOTS', app.doneSlots)
+    
 
 
 def drawSideCard(app):
@@ -473,22 +478,43 @@ def isInitialPilesSolvable(app):
     if winCondition(app):
         return True
     else:
-        print('this is the sideDeck', app.sideDeck, app.sideDeckFlipped)
         for _ in range(len(app.sideDeck) + len(app.sideDeckFlipped)):
             flipDeck(app)
             if isMoveValid(app, 'sideCard') != None:
                 savedState = memorizeCurrentAppState(app)
                 toSlotOrPile, movedTo = isMoveValid(app, 'sideCard')
+                # print('RIGHT BEFORE SIDECARD MOVE current sideCard sideDeck and flippedsidedeck', app.sideCard, app.sideDeck, app.sideDeckFlipped)
+                # print('RIGHT BEFORE SIDECARD MOVE', 'visib', app.pilesVisibility, 'piles', app.piles)
+                # print('DONESIES SLOTS RIGHT BEFORE SIDECARD MOVE', app.doneSlots)
                 makeMove(app, 'sideCard', toSlotOrPile, movedTo)
-                print('current sideCard sideDeck and flippedsidedeck', app.sideCard, app.sideDeck, app.sideDeckFlipped)
-                print('right after make sideCard move', 'visib', app.pilesVisibility, 'piles', app.piles)
+                cardsInPile = 0
+                for pile in range(len(app.piles)):
+                    for card in app.piles[pile]:
+                        cardsInPile += 1
+                cardsInSide = len(app.sideDeck) + len(app.sideDeckFlipped)
+                cardsInSlots = 0
+                for slot in app.doneSlots:
+                    cardsInSlots += slot[1]
+                print('SIZEEEEEE', cardsInPile+cardsInSide+cardsInSlots)
+                # print('RIGHT AFTER SIDECARD MOVE current sideCard sideDeck and flippedsidedeck', app.sideCard, app.sideDeck, app.sideDeckFlipped)
+                # print('RIGHT AFTER SIDECARD MOVE', 'visib', app.pilesVisibility, 'piles', app.piles)
+                # print('DONESIES SLOTS RIGHT AFTER SIDECARD MOVE', app.doneSlots)
                 if isInitialPilesSolvable(app):
                     return True
-                print('Before undo:', 'piles',app.piles, 'slots',app.doneSlots, 'sideDeck',app.sideDeck, 'sideDeckFlipped', app.sideDeckFlipped)
-                print("Saved State before undo:", savedState)
+                # print(f'''BEFORE UNDO:
+                # piles {app.piles}
+                # slots {app.doneSlots}
+                # sideDeck {app.sideDeck}
+                # sideDeckFlipped{app.sideDeckFlipped}''')
+                # print("SAVED STATE before undo:", savedState)
                 undo(app, savedState)
-                print('After undo:', 'piles',app.piles, 'slots',app.doneSlots, 'sideDeck',app.sideDeck, 'sideDeckFlipped', app.sideDeckFlipped)
                 # print('WE UNDOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOED')
+                # print(f'''AFTER UNDO:
+                # piles {app.piles}
+                # slots {app.doneSlots}
+                # sideDeck {app.sideDeck}
+                # sideDeckFlipped{app.sideDeckFlipped}''')
+                
 
         for pileFrom in range(app.numPiles):
             if isMoveValid(app, pileFrom) != None:
@@ -500,26 +526,53 @@ def isInitialPilesSolvable(app):
                 # TO DO: make it so that only memorizing two states at a time!
                 toSlotOrPile, movedTo = isMoveValid(app, pileFrom)
                 makeMove(app, pileFrom, toSlotOrPile, movedTo)
-                print('right after make move','visib', app.pilesVisibility, 'piles', app.piles, 'pileFrom', pileFrom)
+
+                cardsInPile = 0
+                for pile in range(len(app.piles)):
+                    for card in app.piles[pile]:
+                        cardsInPile += 1
+                cardsInSide = len(app.sideDeck) + len(app.sideDeckFlipped)
+                cardsInSlots = 0
+                for slot in app.doneSlots:
+                    cardsInSlots += slot[1]
+                print('SIZEEEEEE', cardsInPile+cardsInSide+cardsInSlots)
+
+                # print('right after make move','visib', app.pilesVisibility, 'piles', app.piles, 'pileFrom', pileFrom)
                 # this part is to check if this state has been seen before.
                 if toSlotOrPile == 'pile': # not if going into a slot
                     if (app.piles, app.doneSlots) in app.previousGameStates:
-                        print('WENT INTO IF KING MOVING AROUND LOOP')
-                        print('PREVIOUS STATES!', app.previousGameStates)
-                        print('Before undo:', 'piles',app.piles, 'slots',app.doneSlots, 'sideDeck',app.sideDeck, 'sideDeckFlipped', app.sideDeckFlipped)
-                        print("Saved State before undo:", savedState)
+                        # print('WENT INTO IF KING MOVING AROUND LOOP')
+                        # print('PREVIOUS STATES!', app.previousGameStates)
+                        # print(f'''BEFORE UNDO:
+                        # piles {app.piles}
+                        # slots {app.doneSlots}
+                        # sideDeck {app.sideDeck}
+                        # sideDeckFlipped{app.sideDeckFlipped}''')
+                        # print("SAVED STATE before undo:", savedState)
                         undo(app, savedState)
-                        print('WE UNDOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOED')
-                        print('After undo:', 'piles',app.piles, 'slots',app.doneSlots, 'sideDeck',app.sideDeck, 'sideDeckFlipped', app.sideDeckFlipped)
+                        # print('WE UNDOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOED')
+                        # print(f'''AFTER UNDO:
+                        # piles {app.piles}
+                        # slots {app.doneSlots}
+                        # sideDeck {app.sideDeck}
+                        # sideDeckFlipped{app.sideDeckFlipped}''')
                         continue
                 
                 if isInitialPilesSolvable(app):
                     return True
-                print('Before undo:', 'piles',app.piles, 'slots',app.doneSlots, 'sideDeck',app.sideDeck, 'sideDeckFlipped', app.sideDeckFlipped)
-                print("Saved State before undo:", savedState)
-                undo(app, savedState) # ChatGPT prompted this idea to have a seperate undo function
-                print('WE UNDOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOED')
-                print('After undo:', 'piles',app.piles, 'slots',app.doneSlots, 'sideDeck',app.sideDeck, 'sideDeckFlipped', app.sideDeckFlipped)
+                # print(f'''BEFORE UNDO:
+                # piles {app.piles}
+                # slots {app.doneSlots}
+                # sideDeck {app.sideDeck}
+                # sideDeckFlipped{app.sideDeckFlipped}''')
+                # print("SAVED STATE before undo:", savedState)
+                undo(app, savedState)
+                # print('WE UNDOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOED')
+                # print(f'''AFTER UNDO:
+                # piles {app.piles}
+                # slots {app.doneSlots}
+                # sideDeck {app.sideDeck}
+                # sideDeckFlipped{app.sideDeckFlipped}''')
         
     return False
 
@@ -625,11 +678,11 @@ def drawHint(app):
         drawCircle(endX, endY, 100)
 
 def callback(data):
-    # print(data.get('probability'))
     global PROBABILITY_BRAIN
     PROBABILITY_BRAIN = data.get('probability')
 
 # ____________________MAIN ________________________
+# this code comes from neurosity docs
 load_dotenv()
 
 neurosity = NeurositySDK({
