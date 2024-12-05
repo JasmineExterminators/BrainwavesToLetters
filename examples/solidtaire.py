@@ -253,7 +253,6 @@ def flipDeck(app):
         app.sideCard = None
         return
     elif app.sideDeck == []:
-        random.shuffle(app.sideDeckFlipped)
         app.sideDeck = copy.deepcopy(app.sideDeckFlipped)
         app.sideDeckFlipped = []
     cardFlipped = app.sideDeck.pop()
@@ -485,7 +484,10 @@ def isInitialPilesSolvable(app):
                 print('right after make sideCard move', 'visib', app.pilesVisibility, 'piles', app.piles)
                 if isInitialPilesSolvable(app):
                     return True
-                # undo(app, savedState)
+                print('Before undo:', 'piles',app.piles, 'slots',app.doneSlots, 'sideDeck',app.sideDeck, 'sideDeckFlipped', app.sideDeckFlipped)
+                print("Saved State before undo:", savedState)
+                undo(app, savedState)
+                print('After undo:', 'piles',app.piles, 'slots',app.doneSlots, 'sideDeck',app.sideDeck, 'sideDeckFlipped', app.sideDeckFlipped)
                 # print('WE UNDOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOED')
 
         for pileFrom in range(app.numPiles):
@@ -504,21 +506,26 @@ def isInitialPilesSolvable(app):
                     if (app.piles, app.doneSlots) in app.previousGameStates:
                         print('WENT INTO IF KING MOVING AROUND LOOP')
                         print('PREVIOUS STATES!', app.previousGameStates)
-                        print('piles', app.piles)
+                        print('Before undo:', 'piles',app.piles, 'slots',app.doneSlots, 'sideDeck',app.sideDeck, 'sideDeckFlipped', app.sideDeckFlipped)
+                        print("Saved State before undo:", savedState)
                         undo(app, savedState)
                         print('WE UNDOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOED')
+                        print('After undo:', 'piles',app.piles, 'slots',app.doneSlots, 'sideDeck',app.sideDeck, 'sideDeckFlipped', app.sideDeckFlipped)
                         continue
                 
                 if isInitialPilesSolvable(app):
                     return True
+                print('Before undo:', 'piles',app.piles, 'slots',app.doneSlots, 'sideDeck',app.sideDeck, 'sideDeckFlipped', app.sideDeckFlipped)
+                print("Saved State before undo:", savedState)
                 undo(app, savedState) # ChatGPT prompted this idea to have a seperate undo function
                 print('WE UNDOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOED')
+                print('After undo:', 'piles',app.piles, 'slots',app.doneSlots, 'sideDeck',app.sideDeck, 'sideDeckFlipped', app.sideDeckFlipped)
         
     return False
 
 def memorizeCurrentAppState(app):
     currentAppStateDict = {'app.piles':copy.deepcopy(app.piles),
-                            'app.sideCard': app.sideCard,
+                            'app.sideCard': copy.deepcopy(app.sideCard),
                            'app.sideDeck': copy.deepcopy(app.sideDeck),
                            'app.sideDeckFlipped': copy.deepcopy(app.sideDeckFlipped), 
                            'app.doneSlots': copy.deepcopy(app.doneSlots),
