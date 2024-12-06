@@ -105,60 +105,99 @@ def main():
                     keypoints = blob_process(eye, threshold, detector)
                     eye = cv2.drawKeypoints(eye, keypoints, eye, (0, 0, 255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
                     for keypoint in keypoints:
-                        # print(f"Keypoint at {keypoint.pt} with size {keypoint.size}")
+                        compareXL, compareXR, compareYL, compareYR = None, None, None, None
                         if leftEyeCoords != None:
                             pupilX = keypoint.pt[0]
                             pupilY = keypoint.pt[1]
-                            leftEyeLeftX = leftEyeCoords[0] # where the eyes are on the face.
-                            leftEyeTopY = leftEyeCoords[1]
                             leftEyeWidth = leftEyeCoords[2]
                             leftEyeHeight = leftEyeCoords[3]
-                            # print(pupilX, pupilY)
-                            compareY = pupilY/leftEyeHeight
-                            compareX = pupilX/leftEyeWidth
-                            print(compareY, compareX)
-                            if compareX > 0.56:
-                                if compareY > 0.25:
-                                    print('looking right-down',compareX,compareY)
-                                else:
-                                    print('looking right-up',compareX,compareY)
-                            elif compareX < 0.48:
-                                if compareY > 0.25:
-                                    print('looking left-down',compareX,compareY)
-                                else:
-                                    print('looking left-up',compareX,compareY)
+                            compareYL = pupilY/leftEyeHeight
+                            compareXL = pupilX/leftEyeWidth
+                        if rightEyeCoords != None:
+                            pupilX = keypoint.pt[0]
+                            pupilY = keypoint.pt[1]
+                            rightEyeWidth = rightEyeCoords[2]
+                            rightEyeHeight = rightEyeCoords[3]
+                            compareYR = pupilY/rightEyeHeight
+                            compareXR = pupilX/rightEyeWidth
+                        compareX = 0
+                        numValsX = 0
+                        compareY = 0
+                        numValsY = 0
+                        for val in (compareXR, compareXL):
+                            if val != None:
+                                compareX += val
+                                numValsX += 1
+                        compareX/=numValsX
+                        for val in (compareYR, compareYL):
+                            if val != None:
+                                compareY += val
+                                numValsY += 1
+                        compareY/=numValsY
+
+                        if compareX > 0.55:
+                            if compareY > 0.265:
+                                print('looking right-down',compareX,compareY)
                             else:
-                                if compareY > 0.25:
-                                    print('looking center-down',compareX,compareY)
-                                else:
-                                    print('looking center-up',compareX,compareY)
-
-                            # if compareY > 0.25:
-                            #     print('looking down',compareY)
-                            # else:
-                            #     print('looking up',compareY)
-
-                            # if pupilY < 11:
-                            #     print('loking down', pupilX, pupilY)
-                            # else:
-                            #     print('loking up', pupilX, pupilY)
-   
-                            # if pupilX > 25:
-                            #     print('looking left',pupilX, pupilY)
-                            # elif pupilX < 17:
-                            #     print('looking right',pupilX, pupilY)
-                            # else:
-                            #     print('center',pupilX, pupilY)
-
-
-                            # print(leftEyeLeftX, pupilX, leftEyeWidth)
-
-                            # if leftEyeLeftX <= pupilX <=  leftEyeLeftX + leftEyeWidth: # that means it's the left pupil
-                            #     print('THIS IS THE DIFFERENCE:', pupilX - leftEyeLeftX)
-                            # else:
-                            #     print('AAAAAAAAAAAAAAAAAAAAAAAA')
-
-
+                                print('looking right-up',compareX,compareY)
+                        elif compareX < 0.44:
+                            if compareY > 0.265:
+                                print('looking left-down',compareX,compareY)
+                            else:
+                                print('looking left-up',compareX,compareY)
+                        else:
+                            if compareY > 0.265:
+                                print('looking center-down',compareX,compareY)
+                            else:
+                                print('looking center-up',compareX,compareY)
+                        
+                            
+                        # if leftEyeCoords != None:
+                        #     pupilX = keypoint.pt[0]
+                        #     pupilY = keypoint.pt[1]
+                        #     leftEyeWidth = leftEyeCoords[2]
+                        #     leftEyeHeight = leftEyeCoords[3]
+                        #     compareY = pupilY/leftEyeHeight
+                        #     compareX = pupilX/leftEyeWidth
+                        #     print(compareY, compareX)
+                        #     if compareX > 0.56:
+                        #         if compareY > 0.25:
+                        #             print('looking right-down',compareX,compareY)
+                        #         else:
+                        #             print('looking right-up',compareX,compareY)
+                        #     elif compareX < 0.48:
+                        #         if compareY > 0.25:
+                        #             print('looking left-down',compareX,compareY)
+                        #         else:
+                        #             print('looking left-up',compareX,compareY)
+                        #     else:
+                        #         if compareY > 0.25:
+                        #             print('looking center-down',compareX,compareY)
+                        #         else:
+                        #             print('looking center-up',compareX,compareY)
+                        # if rightEyeCoords != None:
+                        #     pupilX = keypoint.pt[0]
+                        #     pupilY = keypoint.pt[1]
+                        #     rightEyeWidth = rightEyeCoords[2]
+                        #     rightEyeHeight = rightEyeCoords[3]
+                        #     compareY = pupilY/rightEyeHeight
+                        #     compareX = pupilX/rightEyeWidth
+                        #     print(compareY, compareX)
+                        #     if compareX > 0.56:
+                        #         if compareY > 0.25:
+                        #             print('looking right-down',compareX,compareY)
+                        #         else:
+                        #             print('looking right-up',compareX,compareY)
+                        #     elif compareX < 0.4:
+                        #         if compareY > 0.25:
+                        #             print('looking left-down',compareX,compareY)
+                        #         else:
+                        #             print('looking left-up',compareX,compareY)
+                        #     else:
+                        #         if compareY > 0.25:
+                        #             print('looking center-down',compareX,compareY)
+                        #         else:
+                        #             print('looking center-up',compareX,compareY)
         
         cv2.imshow('image', frame)
         if cv2.waitKey(1) & 0xFF == ord('q'):
