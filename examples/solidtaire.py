@@ -99,32 +99,8 @@ def game_redrawAll(app):
         drawHint(app)
     
 def game_onKeyPress(app, key):
-    print(PROBABILITY_BRAIN, key)
-    if key == '1' and PROBABILITY_BRAIN >= app.probThreshold or key == '2' and PROBABILITY_BRAIN >= app.probThreshold or key == '4' and PROBABILITY_BRAIN >= app.probThreshold or key == '5' and PROBABILITY_BRAIN >= app.probThreshold or key == '6' and PROBABILITY_BRAIN >= app.probThreshold:
-        print('pressed success')
-        if key == '1':
-            pileFrom = 0
-        elif key == '2':
-            pileFrom = 1
-        elif key == '4':
-            pileFrom = 2
-        elif key == '5':
-            pileFrom = 3
-        elif key == '6':
-            pileFrom = 'sideCard'
-
-        if isMoveValid(app, pileFrom) != None:
-            print('moveValid')
-            toSlotOrPile, movedTo = isMoveValid(app, pileFrom)
-            makeMove(app, pileFrom, toSlotOrPile, movedTo)
-            
-        else:
-            print('notvalid')
-            app.wrongMoveAnimation = True
-        
-    elif key == '3':
-        flipDeck(app)
-    elif key == 'r':
+    
+    if key == 'r':
         pass
         # reset(app)
     elif key == 'h':
@@ -133,13 +109,41 @@ def game_onKeyPress(app, key):
     if app.isHintMode: # checks on every key press 
         findPossibleMovesHint(app)
         
-    if winCondition(app): # is this the right place to put this???
-        setActiveScreen('endWin')
+    
 
 def game_onStep(app):
     global unsubscribe # chatGPT gave me the idea to set unsubscribe as a global var.
     unsubscribe = neurosity.kinesis("rightArm", callback)
-    gettingGazeCorner(app)
+    
+    key = gettingGazeCorner(app)
+    if key != None:
+        print(PROBABILITY_BRAIN, key)
+        if key == '1' and PROBABILITY_BRAIN >= app.probThreshold or key == '2' and PROBABILITY_BRAIN >= app.probThreshold or key == '4' and PROBABILITY_BRAIN >= app.probThreshold or key == '5' and PROBABILITY_BRAIN >= app.probThreshold or key == '6' and PROBABILITY_BRAIN >= app.probThreshold:
+            print('pressed success')
+            if key == '1':
+                pileFrom = 0
+            elif key == '2':
+                pileFrom = 1
+            elif key == '4':
+                pileFrom = 2
+            elif key == '5':
+                pileFrom = 3
+            elif key == '6':
+                pileFrom = 'sideCard'
+
+            if isMoveValid(app, pileFrom) != None:
+                print('moveValid')
+                toSlotOrPile, movedTo = isMoveValid(app, pileFrom)
+                makeMove(app, pileFrom, toSlotOrPile, movedTo)
+            else:
+                print('notvalid')
+                app.wrongMoveAnimation = True
+        elif key == '3':
+            flipDeck(app)
+        if winCondition(app): 
+            setActiveScreen('endWin')
+    
+    
     if app.isMovingAnimation:
         for cardIdx in range(len(app.currentlyMovingDetails)):
             xMoveRateSign = app.currentlyMovingDetails[cardIdx][1]
@@ -731,18 +735,24 @@ def gettingGazeCorner(app):
                     if compareX > 0.55:
                         if compareY > 0.265:
                             print('looking right-down',compareX,compareY)
+                            return '6'
                         else:
                             print('looking right-up',compareX,compareY)
+                            return '3'
                     elif compareX < 0.44:
                         if compareY > 0.265:
                             print('looking left-down',compareX,compareY)
+                            return '4'
                         else:
                             print('looking left-up',compareX,compareY)
+                            return '1'
                     else:
                         if compareY > 0.265:
                             print('looking center-down',compareX,compareY)
+                            return '5'
                         else:
                             print('looking center-up',compareX,compareY)
+                            return '2'
         
     cv2.imshow('image', frame)
     if cv2.waitKey(1) & 0xFF == ord('q'):
