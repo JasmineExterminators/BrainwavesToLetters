@@ -55,7 +55,7 @@ def onAppStart(app):
     app.numButtonRows = 2 # not changeable easily
     app.buttonSpacingOffEdgeX = app.buttonWidth/2 + 50 # need to do this cuz the align of the buttons are center
     app.buttonSpacingOffEdgeY = app.headerHeight/2 # align of the buttons are center so center the button in the header
-    app.buttonLabels = [['pile 1', 'pile2', 'flip deck'], ['pile 3', 'pile4', 'side card']]
+    app.buttonLabels = [['Pile 1', 'Pile 2', 'Flip Deck'], ['Pile 3', 'Pile4', 'Side Card']]
     app.selectedButtonAnimation = None
     app.selectedButtonAniPadding = 10
     app.percentageTongue = 30
@@ -76,9 +76,9 @@ def onAppStart(app):
             print('AFTER SUCCESS', sideDeck)
             print('YIPEEE')
             isSolvable = True
-            resetApp(app)
-            app.piles = piles
-            app.sideDeck = sideDeck
+            # resetApp(app)
+            # app.piles = piles
+            # app.sideDeck = sideDeck
         else:
             print('ALOHAAA ITS NOT WORKEDDDD')
     app.cornerHistory = []
@@ -123,7 +123,7 @@ def game_redrawAll(app):
     drawSideCard(app)
     drawDoneSlots(app)
     drawButtons(app)
-    drawLabel(app.errorCount, 200, 200)
+    # drawLabel(app.errorCount, 200, 200)
     if app.isMovingAnimation:
         drawAnimateCardSlide(app)
     if app.isWrongMoveAnimation:
@@ -265,8 +265,8 @@ def drawButtons(app):
         for col in range(app.numButtonCols):
             buttonX, buttonY = getButtonXY(app, row, col)
             drawRect(buttonX, buttonY, app.buttonWidth, app.buttonHeight,
-                          align = 'center', fill = None, border = 'black')
-            drawLabel(app.buttonLabels[row][col], buttonX, buttonY, align = 'center')
+                          align = 'center', fill = None, border = 'white')
+            drawLabel(app.buttonLabels[row][col], buttonX, buttonY, align = 'center', fill = 'white')
 
 def getButtonXY(app, row, col):
     # finding buttonY
@@ -778,8 +778,9 @@ def gettingGazeCorner(app):
     ret, frame = app.cap.read()
     
     cv2.imshow('image', frame)
-    # if cv2.waitKey(1) & 0xFF == ord('q'):
-    #     return
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        return
+    
     face_frame = detect_faces(frame, app.face_cascade)
     if face_frame is not None:
         leftEyePic, leftEyeCoords, rightEyePic, rightEyeCoords = detect_eyes(face_frame, app.eye_cascade)
@@ -843,6 +844,7 @@ def gettingGazeCorner(app):
                         else:
                             print('looking center-up',compareX,compareY)
                             return '2'
+    
     print('None')
    
     
