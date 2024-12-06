@@ -63,16 +63,16 @@ def onAppStart(app):
     # not button stuff anymore
     app.previousGameStates = []
     app.undoCount = 0
-    app.giveUpUndoCount = 100
+    app.giveUpUndoCount = 50
     app.madeNewPileCount = 0
     # makeInitialPiles(app)
     # solveable test case chatGPT gave me
     # app.piles = [[('heart', 5)], [('spade', 9), ('spade', 10)], [('spade', 12), ('clover', 4), ('diamond', 2)], [('spade', 3), ('clover', 8), ('heart', 13), ('diamond', 6)]]
     
-    # app.piles = [[('heart', 1)], [('spade', 2), ('spade', 1)], [('spade', 12), ('clover', 1), ('diamond', 1)], [('spade', 3), ('clover', 2), ('heart', 2), ('diamond', 2)]]
-    # for pile in range(len(app.piles)):
-    #     for card in range(len(app.piles[pile])):
-    #         app.sideDeck.remove(app.piles[pile][card])
+    app.piles = [[('heart', 1)], [('spade', 2), ('spade', 1)], [('spade', 12), ('clover', 1), ('diamond', 1)], [('spade', 3), ('clover', 2), ('heart', 2), ('diamond', 2)]]
+    for pile in range(len(app.piles)):
+        for card in range(len(app.piles[pile])):
+            app.sideDeck.remove(app.piles[pile][card])
     
     # app.piles = [[('heart', 13)], [('spade', 13), ('heart', 12)], [], []]
     # app.doneSlots = [('spade', 12), ('heart', 11), ('clover', 13), ('diamond', 13)]
@@ -81,19 +81,19 @@ def onAppStart(app):
 
     # print(app.piles)
     # print(app.sideDeck)
-    # if isInitialPilesSolvable(app) == False:
-    #     print('ALOHAAA ITS NOT WORKEDDDD')
-    # else:
-    #     print('YIPEEE')
+    if isInitialPilesSolvable(app) == False:
+        print('ALOHAAA ITS NOT WORKEDDDD')
+    else:
+        print('YIPEEE', app.undoCount)
     makeInitialPiles(app)
-    isSolvable = False
-    while isSolvable == False:
-        makeInitialPiles(app)
-        if isInitialPilesSolvable(app) == True:
-            print('YIPEEE', app.madeNewPileCount)
-            isSolvable = True
-        else:
-            print('ALOHAAA ITS NOT WORKEDDDD')
+    # isSolvable = False
+    # while isSolvable == False:
+    #     makeInitialPiles(app)
+    #     if isInitialPilesSolvable(app) == True:
+    #         print('YIPEEE', app.madeNewPileCount)
+    #         isSolvable = True
+    #     else:
+    #         print('ALOHAAA ITS NOT WORKEDDDD')
             
     
 
