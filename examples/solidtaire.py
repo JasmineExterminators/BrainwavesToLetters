@@ -62,29 +62,31 @@ def onAppStart(app):
     app.previousGameStates = []
     app.undoCount = 0
     app.giveUpUndoCount = 100
-
-    isSolvable = False
-    while isSolvable == False:
-        makeInitialPiles(app)
-        piles = copy.deepcopy(app.piles)
-        print(piles)
-        sideDeck = copy.deepcopy(app.sideDeck)
-        print(sideDeck)
-        if isInitialPilesSolvable(app) == True:
-            print('AFTER SUCCESS', piles)
-            print('AFTER SUCCESS', sideDeck)
-            print('YIPEEE')
-            isSolvable = True
-            resetApp(app)
-            app.piles = piles
-            app.sideDeck = sideDeck
-        else:
-            print('ALOHAAA ITS NOT WORKEDDDD')
+    makeInitialPiles(app)
+    # isSolvable = False
+    # while isSolvable == False:
+    #     makeInitialPiles(app)
+    #     piles = copy.deepcopy(app.piles)
+    #     print(piles)
+    #     sideDeck = copy.deepcopy(app.sideDeck)
+    #     print(sideDeck)
+    #     if isInitialPilesSolvable(app) == True:
+    #         print('AFTER SUCCESS', piles)
+    #         print('AFTER SUCCESS', sideDeck)
+    #         print('YIPEEE')
+    #         isSolvable = True
+    #         resetApp(app)
+    #         app.piles = piles
+    #         app.sideDeck = sideDeck
+    #     else:
+    #         print('ALOHAAA ITS NOT WORKEDDDD')
     
     getEyeTrackingReady(app)
             
 def game_redrawAll(app):
-    drawSideBar(app)
+    # image source: https://media.istockphoto.com/id/1400136454/photo/wood-plank-panel-texture-outdated-mahogany-table-background.jpg?s=612x612&w=0&k=20&c=qOa3uohMglKoK2pNxMmr7Y9UTyOmp92137gloikW5oM=
+    drawImage('table.jpg', 0, 0, width=app.width, height=app.height)
+    
     drawSideDeck(app)
     drawPiles(app)
     drawSideCard(app)
@@ -97,9 +99,33 @@ def game_redrawAll(app):
         drawAnimateWrongShake(app)
     if app.isHintMode:
         drawHint(app)
+    drawSideBar(app)
+    
     
 def game_onKeyPress(app, key):
-    
+    if key == '1' and PROBABILITY_BRAIN >= app.probThreshold or key == '2' and PROBABILITY_BRAIN >= app.probThreshold or key == '4' and PROBABILITY_BRAIN >= app.probThreshold or key == '5' and PROBABILITY_BRAIN >= app.probThreshold or key == '6' and PROBABILITY_BRAIN >= app.probThreshold:
+        print('pressed success')
+        if key == '1':
+            pileFrom = 0
+        elif key == '2':
+            pileFrom = 1
+        elif key == '4':
+            pileFrom = 2
+        elif key == '5':
+            pileFrom = 3
+        elif key == '6':
+            pileFrom = 'sideCard'
+
+        if isMoveValid(app, pileFrom) != None:
+            print('moveValid')
+            toSlotOrPile, movedTo = isMoveValid(app, pileFrom)
+            makeMove(app, pileFrom, toSlotOrPile, movedTo)
+        else:
+            print('notvalid')
+            app.wrongMoveAnimation = True
+    elif key == '3':
+        flipDeck(app)
+        
     if key == 'r':
         pass
         # reset(app)
@@ -109,7 +135,8 @@ def game_onKeyPress(app, key):
     if app.isHintMode: # checks on every key press 
         findPossibleMovesHint(app)
         
-    
+    if winCondition(app): 
+            setActiveScreen('endWin')
 
 def game_onStep(app):
     global unsubscribe # chatGPT gave me the idea to set unsubscribe as a global var.
@@ -219,6 +246,7 @@ def getButtonXY(app, row, col):
 def drawSideBar(app):
     sidebarX = app.width - app.sidebarWidth
     drawLine(sidebarX, 0, sidebarX, app.height)
+    drawImage('stick.png', sidebarX, 0, height = app.height, width = 100)
 
 def drawSideDeck(app):
     img = Image.open(os.path.join('cardGraphicsPNG', app.cardGraphics[('back')]))
@@ -472,7 +500,10 @@ def drawDoneSlots(app):
         cardGraphicURL = CMUImage(img)
         # chatGPT gave me the idea for this 'continue' method
         if app.isMovingAnimation and card in app.currentlyMovingCardNames:
-            continue
+            suit = card[0]
+            num = card[1]
+            img = Image.open(os.path.join('cardGraphicsPNG', app.cardGraphics[(suit, num-1)]))
+            cardGraphicURL = CMUImage(img)
         drawImage(cardGraphicURL, doneSlotX, app.height - app.headerHeight - app.cardHeight/2,
                   width=app.cardWidth, height=app.cardHeight, align='center')
 
