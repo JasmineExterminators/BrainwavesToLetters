@@ -115,11 +115,28 @@ def main():
                             leftEyeHeight = leftEyeCoords[3]
                             # print(pupilX, pupilY)
                             compareY = pupilY/leftEyeHeight
-                            # print(compareY)
-                            if compareY > 0.25:
-                                print('looking down',compareY)
+                            compareX = pupilX/leftEyeWidth
+                            print(compareY, compareX)
+                            if compareX > 0.56:
+                                if compareY > 0.25:
+                                    print('looking right-down',compareX,compareY)
+                                else:
+                                    print('looking right-up',compareX,compareY)
+                            elif compareX < 0.48:
+                                if compareY > 0.25:
+                                    print('looking left-down',compareX,compareY)
+                                else:
+                                    print('looking left-up',compareX,compareY)
                             else:
-                                print('looking up',compareY)
+                                if compareY > 0.25:
+                                    print('looking center-down',compareX,compareY)
+                                else:
+                                    print('looking center-up',compareX,compareY)
+
+                            # if compareY > 0.25:
+                            #     print('looking down',compareY)
+                            # else:
+                            #     print('looking up',compareY)
 
                             # if pupilY < 11:
                             #     print('loking down', pupilX, pupilY)
