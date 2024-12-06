@@ -30,9 +30,6 @@ def onAppStart(app):
     app.probThreshold = -1
     app.piles = []
     
-    
-    # this is the test piles:
-    # app.piles = [[('spade', 13)], [('spade', 4), ('spade', 10)], [('diamond', 13), ('diamond', 1), ('diamond', 12)], [('diamond', 12), ('clover', 12), ('clover', 6), ('spade', 11)]]
     app.doneSlots = [('spade',0),('heart',0),('clover',0),('diamond',0)] # use 0 cuz 1 is next after that
     app.sideCard = None
     app.sideBarVerticalCardSpacing = 200
@@ -63,40 +60,26 @@ def onAppStart(app):
     # not button stuff anymore
     app.previousGameStates = []
     app.undoCount = 0
-    app.giveUpUndoCount = 50
-    app.madeNewPileCount = 0
-    # makeInitialPiles(app)
-    # solveable test case chatGPT gave me
-    # app.piles = [[('heart', 5)], [('spade', 9), ('spade', 10)], [('spade', 12), ('clover', 4), ('diamond', 2)], [('spade', 3), ('clover', 8), ('heart', 13), ('diamond', 6)]]
-    
-    app.piles = [[('heart', 1)], [('spade', 2), ('spade', 1)], [('spade', 12), ('clover', 1), ('diamond', 1)], [('spade', 3), ('clover', 2), ('heart', 2), ('diamond', 2)]]
-    for pile in range(len(app.piles)):
-        for card in range(len(app.piles[pile])):
-            app.sideDeck.remove(app.piles[pile][card])
-    
-    # app.piles = [[('heart', 13)], [('spade', 13), ('heart', 12)], [], []]
-    # app.doneSlots = [('spade', 12), ('heart', 11), ('clover', 13), ('diamond', 13)]
-    # app.sideDeck = []
-    # app.sideDeckFlipped = []
+    app.giveUpUndoCount = 100
 
-    # print(app.piles)
-    # print(app.sideDeck)
-    if isInitialPilesSolvable(app) == False:
-        print('ALOHAAA ITS NOT WORKEDDDD')
-    else:
-        print('YIPEEE', app.undoCount)
-    makeInitialPiles(app)
-    # isSolvable = False
-    # while isSolvable == False:
-    #     makeInitialPiles(app)
-    #     if isInitialPilesSolvable(app) == True:
-    #         print('YIPEEE', app.madeNewPileCount)
-    #         isSolvable = True
-    #     else:
-    #         print('ALOHAAA ITS NOT WORKEDDDD')
+    isSolvable = False
+    while isSolvable == False:
+        makeInitialPiles(app)
+        piles = copy.deepcopy(app.piles)
+        print(piles)
+        sideDeck = copy.deepcopy(app.sideDeck)
+        print(sideDeck)
+        if isInitialPilesSolvable(app) == True:
+            print('AFTER SUCCESS', piles)
+            print('AFTER SUCCESS', sideDeck)
+            print('YIPEEE')
+            isSolvable = True
+            resetApp(app)
+            app.piles = piles
+            app.sideDeck = sideDeck
+        else:
+            print('ALOHAAA ITS NOT WORKEDDDD')
             
-    
-
 def game_redrawAll(app):
     drawSideBar(app)
     drawSideDeck(app)
@@ -178,14 +161,17 @@ def makeFullDeck(app): # making a list of all the cards in a deck of normal play
         for number in numbers:
             app.fullDeck.append((suit,number))
 
-def makeInitialPiles(app): # setting up the piles of a new game
+def resetApp(app):
     app.piles = []
     app.sideDeck = copy.deepcopy(app.fullDeck)
     app.sideDeckFlipped = []
     app.doneSlots = [('spade',0),('heart',0),('clover',0),('diamond',0)]
     app.undoCount = 0
-    app.madeNewPileCount += 1
-    print("MAKING NEW PILES")
+    app.sideCard = None
+    app.pilesVisibility = [1 for _ in range(app.numPiles)] # this indicates how many cards in the pile are visible
+
+def makeInitialPiles(app): # setting up the piles of a new game
+    resetApp(app)
 
     for _ in range(app.numPiles):
         app.piles.append([])
@@ -275,11 +261,9 @@ def drawPiles(app):
 
 def flipDeck(app):
     if app.sideDeck == [] and app.sideDeckFlipped == []:
-        print('both are empty')
         app.sideCard = None
         return
     elif app.sideDeck == []:
-        print('sidedeck is empty')
         app.sideDeck = copy.deepcopy(app.sideDeckFlipped)
         app.sideDeckFlipped = []
         app.sideCard = None
@@ -313,14 +297,12 @@ def isMoveValid(app, pileFrom): # pileFrom is the index into app.piles or 'sideC
         if currSlotSuit == cardToMoveSuit:
             if currSlotNum+1 == cardToMoveNum:
                 return 'slot', slot
-            # print('not success', currSlotNum+1, cardToMoveNum)
 
     # Only enter this part if above doesn't return anything (if there are no valid moves moving to piles)
     # =========== THIS PART CHECKS FOR NORMAL MOVES FROM PILE TO PILE OR SIDECARD TO PILE ============
     if pileFrom != 'sideCard': # if from one of the piles (no need to set cardToMove for sideCard cuz alr done above)
         # need to change the cardToMove to be the first visible in a pile because if moving from pile to pile, the whole chain needs to move 
         numCardsOpenInPile = app.pilesVisibility[pileFrom] #this is the card num (counting from the back) that should be checked (the first visible card in the pile)
-        # print('PILEFROM AND NUMCARDSOPEN IN PILE', pileFrom, numCardsOpenInPile)
         cardToMove = app.piles[pileFrom][-1*numCardsOpenInPile]
         cardToMoveSuit = cardToMove[0]
         cardToMoveColor = getCardColor(cardToMove)
@@ -328,7 +310,6 @@ def isMoveValid(app, pileFrom): # pileFrom is the index into app.piles or 'sideC
 
     for pile in range(app.numPiles):
         if pile == pileFrom:
-            # print('skipping over', pile)
             continue
         if app.piles[pile] == []: 
             if cardToMoveNum == 13: # if the pile is empty, king can go in it
@@ -336,11 +317,9 @@ def isMoveValid(app, pileFrom): # pileFrom is the index into app.piles or 'sideC
             else: # skip over any piles that are empty
                 continue 
         lastCardinPile = app.piles[pile][-1]
-        # print('lastCardInPile', lastCardinPile)
         lastCardinPileColor = getCardColor(lastCardinPile)
         lastCardinPileNum = lastCardinPile[1]
         if cardToMoveColor != lastCardinPileColor and cardToMoveNum +1 == lastCardinPileNum:
-            # print('Move successful, moving', cardToMove)
             return 'pile', pile
         # if cardToMoveColor == lastCardinPileColor:
         #     print('failed due to color, pile', pile)
@@ -381,7 +360,7 @@ def getCardLocation(app, slotOrPile, stackIndex, cardIndexFromLow): #cardIndex i
     return location
     
 def makeMove(app, pileFrom, toSlotOrPile, movedTo):
-    print('HEY WERE ABOUT TO MAKE THE MOVE FROM PILE', pileFrom, 'TO', toSlotOrPile, movedTo)
+    # print('HEY WERE ABOUT TO MAKE THE MOVE FROM PILE', pileFrom, 'TO', toSlotOrPile, movedTo)
     # ============ THIS PART IS TO GET THE INFO ABOUT THE CARD MOVING AND WHERE IT'S FROM ================
     if pileFrom == 'sideCard': # if from sideCard
         # Getting the number of moving cards (for sideCard it can only be on at a time)
@@ -414,7 +393,6 @@ def makeMove(app, pileFrom, toSlotOrPile, movedTo):
         cardsMoving = app.piles[pileFrom][-numMovingCards:] # chatGPT gave me the idea to use slicing instead of pop
         # Removing the moving cards from it's initial pile
         app.piles[pileFrom] = app.piles[pileFrom][:-numMovingCards] # does not need to -1 again in numMovingCards cuz its a negative index
-        # print('cardsMoving', cardsMoving)
     
     # ============ THIS PART IS TO GET THE INFO ABOUT WHERE IT'S GOING ================
     if toSlotOrPile == 'slot':
@@ -422,7 +400,6 @@ def makeMove(app, pileFrom, toSlotOrPile, movedTo):
     elif toSlotOrPile == 'pile':
         app.piles[movedTo].extend(cardsMoving)
         app.pilesVisibility[movedTo] += numMovingCards
-        print('MOVING', numMovingCards)
         # this is to make sure there's never more visible cards than there are cards in the pile
         if app.pilesVisibility[movedTo]  > len(app.piles[movedTo]):
             app.pilesVisibility[movedTo] = len(app.piles[movedTo])
@@ -498,48 +475,27 @@ def winCondition(app):
     return True
 
 def isInitialPilesSolvable(app):
-    print('INTO FUNC')
     if winCondition(app):
-        print('Im in here!!')
         return True
     else:
         if app.undoCount >= app.giveUpUndoCount:
             return False
-        print('we in else')
         if len(app.sideDeck) + len(app.sideDeckFlipped) == 0:
             rangeNumber = 1
         else:
             rangeNumber = len(app.sideDeck) + len(app.sideDeckFlipped)
         for _ in range(rangeNumber):
-            # print('before flipping', app.sideCard, app.sideDeck, app.sideDeckFlipped)
             flipDeck(app)
-            # print('after flipping', app.sideCard, app.sideDeck, app.sideDeckFlipped)
             for pileFrom in range(app.numPiles):
                 if app.sideCard != None and isMoveValid(app, 'sideCard') != None:
-                    print('sideCard is valid move')
-                    print('THIS IS THE SIDECARD', app.sideCard)
                     savedState = memorizeCurrentAppState(app)
                     toSlotOrPile, movedTo = isMoveValid(app, 'sideCard')
                     makeMove(app, 'sideCard', toSlotOrPile, movedTo)
-                    print('after move', 'piles', app.piles, 'doneSlots', app.doneSlots, 'sideDeck', app.sideDeck, 'flippeddeck', app.sideDeckFlipped, 'sideCard', app.sideCard)
-                    
-                    # THE GOLDEN DEBUGGING BLOCK
-                    cardsInPile = 0
-                    for pile in range(len(app.piles)):
-                        for card in app.piles[pile]:
-                            cardsInPile += 1
-                    cardsInSide = len(app.sideDeck) + len(app.sideDeckFlipped)
-                    cardsInSlots = 0
-                    for slot in app.doneSlots:
-                        cardsInSlots += slot[1]
-                    print('SIZEEEEEE', cardsInPile+cardsInSide+cardsInSlots)
 
                     if isInitialPilesSolvable(app) != False:
                         return True
                     undo(app, savedState)
-                    print('WE UNDOOOOOOOOOOOOOOOOOOED')
                 elif isMoveValid(app, pileFrom) != None:
-                    print(pileFrom, 'from is valid move')
                     savedState = memorizeCurrentAppState(app) # ChatGPT prompted this idea to use a separate saved state function
                     app.previousGameStates.append((app.piles, app.doneSlots))
                     if len(app.previousGameStates) > 2:
@@ -548,30 +504,15 @@ def isInitialPilesSolvable(app):
                     toSlotOrPile, movedTo = isMoveValid(app, pileFrom)
                     makeMove(app, pileFrom, toSlotOrPile, movedTo)
 
-                    print('after move', 'piles', app.piles, 'doneSlots', app.doneSlots, 'sideDeck', app.sideDeck, 'flippeddeck', app.sideDeckFlipped, 'sideCard', app.sideCard)
-
-                    # THIS PART IS THE GOLDEN DEBUGGING BLOCK!
-                    cardsInPile = 0
-                    for pile in range(len(app.piles)):
-                        for card in app.piles[pile]:
-                            cardsInPile += 1
-                    cardsInSide = len(app.sideDeck) + len(app.sideDeckFlipped)
-                    cardsInSlots = 0
-                    for slot in app.doneSlots:
-                        cardsInSlots += slot[1]
-                    print('SIZEEEEEE', cardsInPile+cardsInSide+cardsInSlots)
-
                     # this part is to check if this state has been seen before.
                     if toSlotOrPile == 'pile': # not if going into a slot
                         if (app.piles, app.doneSlots) in app.previousGameStates:
                             undo(app, savedState)
-                            print('WE UNDOOOOOOOOOOOOOOOOOOED CUZ KINDS')
                             continue
                     
                     if isInitialPilesSolvable(app) != False:
                         return True
                     undo(app, savedState)
-                    print('WE UNDOOOOOOOOOOOOOOOOOOED')
         return False
 
 def memorizeCurrentAppState(app):
@@ -606,7 +547,6 @@ def drawAnimateWrongShake(app, card, cardX, cardY):
     cardGraphicURL = app.cardGraphics[card]
     drawImage(cardGraphicURL, cardX, cardY, 
               width=app.cardWidth, height=app.cardHeight, align='center', rotateAngle=app.cardAngleShake)
-
 
 def makeGraphicsDict(app): #storing all the graphics info and calculating the card sizes
     cardBackGraphicWidth, cardBackGraphicHeight = getImageSize('https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/Card_back_01.svg/312px-Card_back_01.svg.png?20071017165047')
