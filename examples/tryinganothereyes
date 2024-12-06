@@ -40,36 +40,7 @@ def detect_eyes(img, classifier):
     height, width = img.shape[:2]
     left_eye, leftEyeCoords, right_eye, rightEyeCoords= None, None, None, None
     
-    # below is chatGPT
     for (x, y, w, h) in eyes:
-        eye_region = img[y:y+h, x:x+w]
-        gray_eye = cv2.cvtColor(eye_region, cv2.COLOR_BGR2GRAY)
-        blurred_eye = cv2.GaussianBlur(gray_eye, (7, 7), 0)
-        # _, threshold_eye = cv2.threshold(blurred_eye, 30, 255, cv2.getTrackbarPos('threshold', 'image'))
-        _, threshold_eye = cv2.threshold(blurred_eye, cv2.getTrackbarPos('threshold', 'image'), 255, cv2.THRESH_BINARY_INV)
-
-
-        contours, _ = cv2.findContours(threshold_eye, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-        
-        if contours:
-            largest_contour = max(contours, key=cv2.contourArea)
-            (cx, cy), radius = cv2.minEnclosingCircle(largest_contour)
-            pupil_center = (int(cx), int(cy))
-
-            # Relative position
-            relative_x = cx / eye_region.shape[1]
-            relative_y = cy / eye_region.shape[0]
-
-            # print(f"Pupil relative position: x={relative_x:.2f}, y={relative_y:.2f}")
-            cv2.circle(eye_region, (int(cx), int(cy)), int(radius), (255, 0, 0), 2)
-            # Determine gaze
-            # if relative_x < 0.3:
-            #     print("Looking left")
-            # elif relative_x > 0.7:
-            #     print("Looking right")
-            # else:
-            #     print("Looking center")
-
         if y > height / 2:
             continue  # Skip detections below the midpoint of the face
         eye_center = x + w / 2
@@ -150,54 +121,6 @@ def main():
                                 print('looking center-down',compareX,compareY)
                             else:
                                 print('looking center-up',compareX,compareY)
-                        
-                            
-                        # if leftEyeCoords != None:
-                        #     pupilX = keypoint.pt[0]
-                        #     pupilY = keypoint.pt[1]
-                        #     leftEyeWidth = leftEyeCoords[2]
-                        #     leftEyeHeight = leftEyeCoords[3]
-                        #     compareY = pupilY/leftEyeHeight
-                        #     compareX = pupilX/leftEyeWidth
-                        #     print(compareY, compareX)
-                        #     if compareX > 0.56:
-                        #         if compareY > 0.25:
-                        #             print('looking right-down',compareX,compareY)
-                        #         else:
-                        #             print('looking right-up',compareX,compareY)
-                        #     elif compareX < 0.48:
-                        #         if compareY > 0.25:
-                        #             print('looking left-down',compareX,compareY)
-                        #         else:
-                        #             print('looking left-up',compareX,compareY)
-                        #     else:
-                        #         if compareY > 0.25:
-                        #             print('looking center-down',compareX,compareY)
-                        #         else:
-                        #             print('looking center-up',compareX,compareY)
-                        # if rightEyeCoords != None:
-                        #     pupilX = keypoint.pt[0]
-                        #     pupilY = keypoint.pt[1]
-                        #     rightEyeWidth = rightEyeCoords[2]
-                        #     rightEyeHeight = rightEyeCoords[3]
-                        #     compareY = pupilY/rightEyeHeight
-                        #     compareX = pupilX/rightEyeWidth
-                        #     print(compareY, compareX)
-                        #     if compareX > 0.56:
-                        #         if compareY > 0.25:
-                        #             print('looking right-down',compareX,compareY)
-                        #         else:
-                        #             print('looking right-up',compareX,compareY)
-                        #     elif compareX < 0.4:
-                        #         if compareY > 0.25:
-                        #             print('looking left-down',compareX,compareY)
-                        #         else:
-                        #             print('looking left-up',compareX,compareY)
-                        #     else:
-                        #         if compareY > 0.25:
-                        #             print('looking center-down',compareX,compareY)
-                        #         else:
-                        #             print('looking center-up',compareX,compareY)
         
         cv2.imshow('image', frame)
         if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -206,5 +129,4 @@ def main():
     cap.release()
     cv2.destroyAllWindows()
 
-if __name__ == "__main__":
-    main()
+main()
