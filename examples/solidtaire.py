@@ -39,7 +39,7 @@ def onAppStart(app):
     app.currentlyMovingDetails = []
     app.currentlyMovingAniLocations = []
     app.currentlyMovingCardNames = []
-    app.stepsPerSecond = 100
+    app.stepsPerSecond = 10
     app.isWrongMoveAnimation = False
     app.cardAngleShake = 5
     app.cardSlideRate = 150
@@ -64,42 +64,51 @@ def onAppStart(app):
     app.undoCount = 0
     app.giveUpUndoCount = 100
     makeInitialPiles(app)
-    # isSolvable = False
-    # while isSolvable == False:
-    #     makeInitialPiles(app)
-    #     piles = copy.deepcopy(app.piles)
-    #     print(piles)
-    #     sideDeck = copy.deepcopy(app.sideDeck)
-    #     print(sideDeck)
-    #     if isInitialPilesSolvable(app) == True:
-    #         print('AFTER SUCCESS', piles)
-    #         print('AFTER SUCCESS', sideDeck)
-    #         print('YIPEEE')
-    #         isSolvable = True
-    #         resetApp(app)
-    #         app.piles = piles
-    #         app.sideDeck = sideDeck
-    #     else:
-    #         print('ALOHAAA ITS NOT WORKEDDDD')
-    
+    isSolvable = False
+    while isSolvable == False:
+        makeInitialPiles(app)
+        piles = copy.deepcopy(app.piles)
+        print(piles)
+        sideDeck = copy.deepcopy(app.sideDeck)
+        print(sideDeck)
+        if isInitialPilesSolvable(app) == True:
+            print('AFTER SUCCESS', piles)
+            print('AFTER SUCCESS', sideDeck)
+            print('YIPEEE')
+            isSolvable = True
+            resetApp(app)
+            app.piles = piles
+            app.sideDeck = sideDeck
+        else:
+            print('ALOHAAA ITS NOT WORKEDDDD')
+    app.cornerHistory = []
     getEyeTrackingReady(app)
+    app.startScreenWords = [
+    'BUTTONS INSTRUCTIONS',
+    "You will see six buttons at the 6 corners/edges of the screen. Each of those buttons corresponds to a different move you can make!",
+    'For example, the pile 1 button makes a move with whatever is in the first pile on the screen.', 
+    'To make a move, look at the button, then think, move tongue.',
+    '',
+    'HOW TO PLAY SOLITAIRE',
+    'To play solitaire, the goal is to build up from Ace to King (A > 2 > 3 > ... > K) in each suit in the four slots at the bottom of the screen.', 
+    'You can make moves to build a chain of cards in each of the four piles at the top of the screen ',
+    'as long as the cards alternate black and red suits and builds down in number (K>A).',
+    'You can also flip the side deck on the right and this will show you a new card that you can try to play.', 
+    '',
+    'HINT FEATURE',
+    "To enable hint mode, press 'h', this will display a green circle on the pile you should make a move with and ",
+    "a red circle on the pile or slot the move you can make will go to"]
+    
 
 def start_redrawAll(app):
+    spacingBetweenLines = 40
+    lineNum = 0
     # image source: https://media.istockphoto.com/id/1400136454/photo/wood-plank-panel-texture-outdated-mahogany-table-background.jpg?s=612x612&w=0&k=20&c=qOa3uohMglKoK2pNxMmr7Y9UTyOmp92137gloikW5oM=
     drawImage('table.jpg', 0, 0, width=app.width, height=app.height)
     drawLabel('TOUCHLESS SOLITAIRE', app.width/2, app.height/9, size = 80, fill='white')
-    drawLabel('''/
-Welcome to Touchless Solitaire!\n
-You will see six buttons at the 6 corners/edges of the screen. Each of those buttons corresponds to a different move you can make!\n
-For example, the pile 1 button makes a move with whatever is in the first pile on the screen. \n
-To make a move, look at the button, then think, move tongue.\n
-\n
-To play solitaire, the goal is to build up from Ace to King (A > 2 > 3 > ... > K) in each suit in the four slots at the bottom of the screen.\n
-You can make moves to build a chain of cards in each of the four piles at the top of the screen as long as the cards alternate black and red suits and builds down in number (K>A).\n
-You can also flip the side deck on the right and this will show you a new card that you can try to play.\n
-\n
-To enable hint mode, press 'h', this will display a green circle on the pile you should make a move with and a red circle on the pile or slot the move you can make will go to.\n
-''', app.width/2, 2*app.height/9, fill= 'white')
+    for i in range(len(app.startScreenWords)):
+        drawLabel(app.startScreenWords[i], app.width/8, 2*app.height/9+spacingBetweenLines*lineNum, fill= 'white', align = 'left', size = 20)
+        lineNum +=1
 
 
 def start_onKeyPress(app, key):
@@ -126,7 +135,7 @@ def game_redrawAll(app):
     
 def game_onKeyPress(app, key):
     if key == '1' and PROBABILITY_BRAIN >= app.probThreshold or key == '2' and PROBABILITY_BRAIN >= app.probThreshold or key == '4' and PROBABILITY_BRAIN >= app.probThreshold or key == '5' and PROBABILITY_BRAIN >= app.probThreshold or key == '6' and PROBABILITY_BRAIN >= app.probThreshold:
-        print('pressed success')
+        print(PROBABILITY_BRAIN)
         if key == '1':
             pileFrom = 0
         elif key == '2':
@@ -146,6 +155,7 @@ def game_onKeyPress(app, key):
             print('notvalid')
             app.wrongMoveAnimation = True
     elif key == '3':
+        print(PROBABILITY_BRAIN)
         flipDeck(app)
         
     if key == 'r':
@@ -162,10 +172,19 @@ def game_onKeyPress(app, key):
 
 def game_onStep(app):
     global unsubscribe # chatGPT gave me the idea to set unsubscribe as a global var.
-    unsubscribe = neurosity.kinesis("rightArm", callback)
+    unsubscribe = neurosity.calm(callback)
     
-    key = gettingGazeCorner(app)
+    corner = gettingGazeCorner(app)
+    app.cornerHistory.append(corner)
+    # print(app.cornerHistory)
+    if len(app.cornerHistory)>3 and app.cornerHistory[-3:] == [None, None, None]:
+        while len(app.cornerHistory) > 1 and app.cornerHistory[-1] == None:
+            app.cornerHistory.pop()
+        key = app.cornerHistory[-1]
+    else:
+        key = None
     if key != None:
+        print(key, 'KEYYYYYYYYYYY')
         print(PROBABILITY_BRAIN, key)
         if key == '1' and PROBABILITY_BRAIN >= app.probThreshold or key == '2' and PROBABILITY_BRAIN >= app.probThreshold or key == '4' and PROBABILITY_BRAIN >= app.probThreshold or key == '5' and PROBABILITY_BRAIN >= app.probThreshold or key == '6' and PROBABILITY_BRAIN >= app.probThreshold:
             print('pressed success')
@@ -660,7 +679,7 @@ def endWin_redrawAll(app):
                     width=app.cardWidth, height=app.cardHeight, align='center')
 
 def endWin_onStep(app):
-    randomCardIndex = random.randint(0,len(app.fullDeck))
+    randomCardIndex = random.randint(0,len(app.fullDeck)-1)
     app.cardsConfetti.append(app.fullDeck[randomCardIndex])
     
 
@@ -758,7 +777,9 @@ def nothing(x): # the contents of this function are from https://medium.com/@ste
 def gettingGazeCorner(app):
     ret, frame = app.cap.read()
     
-
+    cv2.imshow('image', frame)
+    # if cv2.waitKey(1) & 0xFF == ord('q'):
+    #     return
     face_frame = detect_faces(frame, app.face_cascade)
     if face_frame is not None:
         leftEyePic, leftEyeCoords, rightEyePic, rightEyeCoords = detect_eyes(face_frame, app.eye_cascade)
@@ -801,31 +822,29 @@ def gettingGazeCorner(app):
                             numValsY += 1
                     compareY/=numValsY
 
-                    if compareX > 0.55:
-                        if compareY > 0.265:
+                    if compareX > 0.6:
+                        if compareY > 0.22:
                             print('looking right-down',compareX,compareY)
                             return '6'
                         else:
                             print('looking right-up',compareX,compareY)
                             return '3'
-                    elif compareX < 0.44:
-                        if compareY > 0.265:
+                    elif compareX < 0.46:
+                        if compareY > 0.22:
                             print('looking left-down',compareX,compareY)
                             return '4'
                         else:
                             print('looking left-up',compareX,compareY)
                             return '1'
                     else:
-                        if compareY > 0.265:
+                        if compareY > 0.22:
                             print('looking center-down',compareX,compareY)
                             return '5'
                         else:
                             print('looking center-up',compareX,compareY)
                             return '2'
-        
-    cv2.imshow('image', frame)
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        return
+    print('None')
+   
     
 
 
@@ -846,4 +865,4 @@ neurosity.login({
 info = neurosity.get_info()
 print(info)
 
-runAppWithScreens(initialScreen='endWin')
+runAppWithScreens(initialScreen='start')
