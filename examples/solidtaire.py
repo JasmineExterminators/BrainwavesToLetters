@@ -39,14 +39,15 @@ def onAppStart(app):
     app.currentlyMovingDetails = []
     app.currentlyMovingAniLocations = []
     app.currentlyMovingCardNames = []
-    app.stepsPerSecond = 500
+    app.stepsPerSecond = 100
     app.isWrongMoveAnimation = False
     app.cardAngleShake = 5
-    app.cardSlideRate = 20
+    app.cardSlideRate = 150
     app.errorCount = 0
     app.isHintMode = False
     app.highlightStartLocation = 0
     app.highlightEndLocation = 0
+    app.cardsConfetti = []
     # button stuff
     app.buttonHeight = app.headerHeight - 50
     app.buttonWidth = app.width / 15
@@ -82,7 +83,28 @@ def onAppStart(app):
     #         print('ALOHAAA ITS NOT WORKEDDDD')
     
     getEyeTrackingReady(app)
-            
+
+def start_redrawAll(app):
+    # image source: https://media.istockphoto.com/id/1400136454/photo/wood-plank-panel-texture-outdated-mahogany-table-background.jpg?s=612x612&w=0&k=20&c=qOa3uohMglKoK2pNxMmr7Y9UTyOmp92137gloikW5oM=
+    drawImage('table.jpg', 0, 0, width=app.width, height=app.height)
+    drawLabel('TOUCHLESS SOLITAIRE', app.width/2, app.height/9, size = 80, fill='white')
+    drawLabel('''/
+Welcome to Touchless Solitaire!\n
+You will see six buttons at the 6 corners/edges of the screen. Each of those buttons corresponds to a different move you can make!\n
+For example, the pile 1 button makes a move with whatever is in the first pile on the screen. \n
+To make a move, look at the button, then think, move tongue.\n
+\n
+To play solitaire, the goal is to build up from Ace to King (A > 2 > 3 > ... > K) in each suit in the four slots at the bottom of the screen.\n
+You can make moves to build a chain of cards in each of the four piles at the top of the screen as long as the cards alternate black and red suits and builds down in number (K>A).\n
+You can also flip the side deck on the right and this will show you a new card that you can try to play.\n
+\n
+To enable hint mode, press 'h', this will display a green circle on the pile you should make a move with and a red circle on the pile or slot the move you can make will go to.\n
+''', app.width/2, 2*app.height/9, fill= 'white')
+
+
+def start_onKeyPress(app, key):
+    setActiveScreen('game')
+
 def game_redrawAll(app):
     # image source: https://media.istockphoto.com/id/1400136454/photo/wood-plank-panel-texture-outdated-mahogany-table-background.jpg?s=612x612&w=0&k=20&c=qOa3uohMglKoK2pNxMmr7Y9UTyOmp92137gloikW5oM=
     drawImage('table.jpg', 0, 0, width=app.width, height=app.height)
@@ -246,6 +268,7 @@ def getButtonXY(app, row, col):
 def drawSideBar(app):
     sidebarX = app.width - app.sidebarWidth
     drawLine(sidebarX, 0, sidebarX, app.height)
+    # image source: https://e7.pngegg.com/pngimages/78/314/png-clipart-wood-stain-varnish-hardwood-line-angle-line-angle-wood-thumbnail.png
     drawImage('stick.png', sidebarX, 0, height = app.height, width = 100)
 
 def drawSideDeck(app):
@@ -627,7 +650,22 @@ def makeGraphicsDict(app): #storing all the graphics info and calculating the ca
     app.cardGraphics['empty'] = 'EmptyCard.png'
 
 def endWin_redrawAll(app):
-    drawLabel('You WON!', 200, 200)
+    # image source: https://media.istockphoto.com/id/1400136454/photo/wood-plank-panel-texture-outdated-mahogany-table-background.jpg?s=612x612&w=0&k=20&c=qOa3uohMglKoK2pNxMmr7Y9UTyOmp92137gloikW5oM=
+    drawImage('table.jpg', 0, 0, width=app.width, height=app.height)
+    drawLabel('You WON!', app.width/2, app.height/2, size = 100, fill = 'white')
+    for card in app.cardsConfetti:
+        img = Image.open(os.path.join('cardGraphicsPNG', app.cardGraphics[card]))
+        cardGraphicURL = CMUImage(img)
+        drawImage(cardGraphicURL, random.randint(0, app.width), random.randint(0, app.height), 
+                    width=app.cardWidth, height=app.cardHeight, align='center')
+
+def endWin_onStep(app):
+    randomCardIndex = random.randint(0,len(app.fullDeck))
+    app.cardsConfetti.append(app.fullDeck[randomCardIndex])
+    
+
+def endWin_onKeyPress(app, key):
+    quit()
 
 def findPossibleMovesHint(app):
     if isMoveValid(app, 'sideCard') != None:
@@ -649,11 +687,11 @@ def findPossibleMovesHint(app):
 def drawHint(app):
     #startLocationCircle:
     startX, startY = app.highlightStartLocation[0], app.highlightStartLocation[1]
-    drawCircle(startX, startY, 100)
+    drawCircle(startX, startY, 50, fill='green')
     #endLocationCircle
     if app.highlightEndLocation != None: # this is incase no possible moves, so only one highlight on the sidedeck
         endX, endY = app.highlightEndLocation[0], app.highlightEndLocation[1]
-        drawCircle(endX, endY, 100)
+        drawCircle(endX, endY, 50, fill = 'red')
 
 def callback(data):
     global PROBABILITY_BRAIN
@@ -808,4 +846,4 @@ neurosity.login({
 info = neurosity.get_info()
 print(info)
 
-runAppWithScreens(initialScreen='game')
+runAppWithScreens(initialScreen='endWin')
