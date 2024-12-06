@@ -1,4 +1,3 @@
-# source: https://medium.com/@stepanfilonov/tracking-your-eyes-with-python-3952e66194a6
 import cv2
 import numpy as np
 
@@ -38,19 +37,16 @@ def detect_eyes(img, classifier):
     gray_frame = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     eyes = classifier.detectMultiScale(gray_frame, 1.3, 5)
     height, width = img.shape[:2]
-    left_eye, leftEyeCoords, right_eye, rightEyeCoords= None, None, None, None
+    left_eye, right_eye = None, None
     
-    # below is chatGPT
+
     for (x, y, w, h) in eyes:
         eye_region = img[y:y+h, x:x+w]
         gray_eye = cv2.cvtColor(eye_region, cv2.COLOR_BGR2GRAY)
         blurred_eye = cv2.GaussianBlur(gray_eye, (7, 7), 0)
-        # _, threshold_eye = cv2.threshold(blurred_eye, 30, 255, cv2.getTrackbarPos('threshold', 'image'))
-        _, threshold_eye = cv2.threshold(blurred_eye, cv2.getTrackbarPos('threshold', 'image'), 255, cv2.THRESH_BINARY_INV)
-
+        _, threshold_eye = cv2.threshold(blurred_eye, 30, 255, cv2.THRESH_BINARY_INV)
 
         contours, _ = cv2.findContours(threshold_eye, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-        
         if contours:
             largest_contour = max(contours, key=cv2.contourArea)
             (cx, cy), radius = cv2.minEnclosingCircle(largest_contour)
@@ -60,26 +56,24 @@ def detect_eyes(img, classifier):
             relative_x = cx / eye_region.shape[1]
             relative_y = cy / eye_region.shape[0]
 
-            # print(f"Pupil relative position: x={relative_x:.2f}, y={relative_y:.2f}")
-            cv2.circle(eye_region, (int(cx), int(cy)), int(radius), (255, 0, 0), 2)
+            print(f"Pupil relative position: x={relative_x:.2f}, y={relative_y:.2f}")
+
             # Determine gaze
-            # if relative_x < 0.3:
-            #     print("Looking left")
-            # elif relative_x > 0.7:
-            #     print("Looking right")
-            # else:
-            #     print("Looking center")
+            if relative_x < 0.6:
+                print("Looking left")
+            elif relative_x > 0.8:
+                print("Looking right")
+            else:
+                print("Looking center")
 
         if y > height / 2:
             continue  # Skip detections below the midpoint of the face
         eye_center = x + w / 2
         if eye_center < width / 2:
             left_eye = img[y:y+h, x:x+w]
-            leftEyeCoords = (x, y, w, h)
         else:
             right_eye = img[y:y+h, x:x+w]
-            rightEyeCoords = (x, y, w, h)
-    return left_eye, leftEyeCoords, right_eye, rightEyeCoords
+    return left_eye, right_eye
 
 def nothing(x):
     pass
@@ -97,51 +91,13 @@ def main():
 
         face_frame = detect_faces(frame, face_cascade)
         if face_frame is not None:
-            leftEyePic, leftEyeCoords, rightEyePic, rightEyeCoords = detect_eyes(face_frame, eye_cascade)
-            for eye in (leftEyePic, rightEyePic):
+            eyes = detect_eyes(face_frame, eye_cascade)
+            for eye in eyes:
                 if eye is not None:
                     threshold = cv2.getTrackbarPos('threshold', 'image')
                     eye = cut_eyebrows(eye)
                     keypoints = blob_process(eye, threshold, detector)
                     eye = cv2.drawKeypoints(eye, keypoints, eye, (0, 0, 255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-                    for keypoint in keypoints:
-                        # print(f"Keypoint at {keypoint.pt} with size {keypoint.size}")
-                        if leftEyeCoords != None:
-                            pupilX = keypoint.pt[0]
-                            pupilY = keypoint.pt[1]
-                            leftEyeLeftX = leftEyeCoords[0] # where the eyes are on the face.
-                            leftEyeTopY = leftEyeCoords[1]
-                            leftEyeWidth = leftEyeCoords[2]
-                            leftEyeHeight = leftEyeCoords[3]
-                            # print(pupilX, pupilY)
-                            compareY = pupilY/leftEyeHeight
-                            # print(compareY)
-                            if compareY > 0.25:
-                                print('looking down',compareY)
-                            else:
-                                print('looking up',compareY)
-
-                            # if pupilY < 11:
-                            #     print('loking down', pupilX, pupilY)
-                            # else:
-                            #     print('loking up', pupilX, pupilY)
-   
-                            # if pupilX > 25:
-                            #     print('looking left',pupilX, pupilY)
-                            # elif pupilX < 17:
-                            #     print('looking right',pupilX, pupilY)
-                            # else:
-                            #     print('center',pupilX, pupilY)
-
-
-                            # print(leftEyeLeftX, pupilX, leftEyeWidth)
-
-                            # if leftEyeLeftX <= pupilX <=  leftEyeLeftX + leftEyeWidth: # that means it's the left pupil
-                            #     print('THIS IS THE DIFFERENCE:', pupilX - leftEyeLeftX)
-                            # else:
-                            #     print('AAAAAAAAAAAAAAAAAAAAAAAA')
-
-
         
         cv2.imshow('image', frame)
         if cv2.waitKey(1) & 0xFF == ord('q'):
