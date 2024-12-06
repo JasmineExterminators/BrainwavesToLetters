@@ -8,7 +8,8 @@ from neurosity import NeurositySDK
 from dotenv import load_dotenv
 import os
 import time
-import cv2 as cv
+import cv2
+import numpy as np
 
 # Increase recursion limit
 sys.setrecursionlimit(2000)
@@ -79,6 +80,8 @@ def onAppStart(app):
             app.sideDeck = sideDeck
         else:
             print('ALOHAAA ITS NOT WORKEDDDD')
+    
+    getEyeTrackingReady(app)
             
 def game_redrawAll(app):
     drawSideBar(app)
@@ -136,6 +139,7 @@ def game_onKeyPress(app, key):
 def game_onStep(app):
     global unsubscribe # chatGPT gave me the idea to set unsubscribe as a global var.
     unsubscribe = neurosity.kinesis("rightArm", callback)
+    gettingGazeCorner(app)
     if app.isMovingAnimation:
         for cardIdx in range(len(app.currentlyMovingDetails)):
             xMoveRateSign = app.currentlyMovingDetails[cardIdx][1]
@@ -619,6 +623,133 @@ def drawHint(app):
 def callback(data):
     global PROBABILITY_BRAIN
     PROBABILITY_BRAIN = data.get('probability')
+
+def getEyeTrackingReady(app): # the contents of this function are from https://medium.com/@stepanfilonov/tracking-your-eyes-with-python-3952e66194a6
+    # Load cascades
+    app.face_cascade = cv2.CascadeClassifier('examples/haarcascades/haarcascade_frontalface_default.xml')
+    app.eye_cascade = cv2.CascadeClassifier('examples/haarcascades/haarcascade_eye.xml')
+
+    # Parameters for blob detection
+    detector_params = cv2.SimpleBlobDetector_Params()
+    detector_params.filterByArea = True
+    detector_params.maxArea = 1500
+    app.detector = cv2.SimpleBlobDetector_create(detector_params)
+
+    app.cap = cv2.VideoCapture(0)
+    cv2.namedWindow('image')
+    cv2.createTrackbar('threshold', 'image', 0, 255, nothing)
+
+def cut_eyebrows(img): # the contents of this function are from https://medium.com/@stepanfilonov/tracking-your-eyes-with-python-3952e66194a6
+    height, _ = img.shape[:2]
+    eyebrow_h = int(height / 4)
+    return img[eyebrow_h:, :]  # Cut eyebrows out
+
+def blob_process(img, threshold, detector): # the contents of this function are from https://medium.com/@stepanfilonov/tracking-your-eyes-with-python-3952e66194a6
+    gray_frame = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    _, img = cv2.threshold(gray_frame, threshold, 255, cv2.THRESH_BINARY)
+    img = cv2.erode(img, None, iterations=2)
+    img = cv2.dilate(img, None, iterations=4)
+    img = cv2.medianBlur(img, 5)
+    keypoints = detector.detect(img)
+    return keypoints
+
+def detect_faces(img, classifier): # the contents of this function are from https://medium.com/@stepanfilonov/tracking-your-eyes-with-python-3952e66194a6
+    gray_frame = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    faces = classifier.detectMultiScale(gray_frame, 1.3, 5)
+    if len(faces) > 0:
+        x, y, w, h = max(faces, key=lambda f: f[2] * f[3])  # Get the largest face
+        return img[y:y+h, x:x+w]
+    return None
+
+def detect_eyes(img, classifier): # the contents of this function are slightly adjusted from https://medium.com/@stepanfilonov/tracking-your-eyes-with-python-3952e66194a6
+    gray_frame = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    eyes = classifier.detectMultiScale(gray_frame, 1.3, 5)
+    height, width = img.shape[:2]
+    left_eye, leftEyeCoords, right_eye, rightEyeCoords= None, None, None, None
+    
+    for (x, y, w, h) in eyes:
+        if y > height / 2:
+            continue  # Skip detections below the midpoint of the face
+        eye_center = x + w / 2
+        if eye_center < width / 2:
+            left_eye = img[y:y+h, x:x+w]
+            leftEyeCoords = (x, y, w, h)
+        else:
+            right_eye = img[y:y+h, x:x+w]
+            rightEyeCoords = (x, y, w, h)
+    return left_eye, leftEyeCoords, right_eye, rightEyeCoords
+
+def nothing(x): # the contents of this function are from https://medium.com/@stepanfilonov/tracking-your-eyes-with-python-3952e66194a6
+    pass
+
+def gettingGazeCorner(app):
+    ret, frame = app.cap.read()
+    
+
+    face_frame = detect_faces(frame, app.face_cascade)
+    if face_frame is not None:
+        leftEyePic, leftEyeCoords, rightEyePic, rightEyeCoords = detect_eyes(face_frame, app.eye_cascade)
+        for eye in (leftEyePic, rightEyePic):
+            if eye is not None:
+                threshold = cv2.getTrackbarPos('threshold', 'image')
+                eye = cut_eyebrows(eye)
+                keypoints = blob_process(eye, threshold, app.detector)
+                eye = cv2.drawKeypoints(eye, keypoints, eye, (0, 0, 255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+                for keypoint in keypoints:
+                    
+                    # below all my own code:
+                    compareXL, compareXR, compareYL, compareYR = None, None, None, None
+                    if leftEyeCoords != None:
+                        pupilX = keypoint.pt[0]
+                        pupilY = keypoint.pt[1]
+                        leftEyeWidth = leftEyeCoords[2]
+                        leftEyeHeight = leftEyeCoords[3]
+                        compareYL = pupilY/leftEyeHeight
+                        compareXL = pupilX/leftEyeWidth
+                    if rightEyeCoords != None:
+                        pupilX = keypoint.pt[0]
+                        pupilY = keypoint.pt[1]
+                        rightEyeWidth = rightEyeCoords[2]
+                        rightEyeHeight = rightEyeCoords[3]
+                        compareYR = pupilY/rightEyeHeight
+                        compareXR = pupilX/rightEyeWidth
+                    compareX = 0
+                    numValsX = 0
+                    compareY = 0
+                    numValsY = 0
+                    for val in (compareXR, compareXL):
+                        if val != None:
+                            compareX += val
+                            numValsX += 1
+                    compareX/=numValsX
+                    for val in (compareYR, compareYL):
+                        if val != None:
+                            compareY += val
+                            numValsY += 1
+                    compareY/=numValsY
+
+                    if compareX > 0.55:
+                        if compareY > 0.265:
+                            print('looking right-down',compareX,compareY)
+                        else:
+                            print('looking right-up',compareX,compareY)
+                    elif compareX < 0.44:
+                        if compareY > 0.265:
+                            print('looking left-down',compareX,compareY)
+                        else:
+                            print('looking left-up',compareX,compareY)
+                    else:
+                        if compareY > 0.265:
+                            print('looking center-down',compareX,compareY)
+                        else:
+                            print('looking center-up',compareX,compareY)
+        
+    cv2.imshow('image', frame)
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        return
+    
+
+
 
 # ____________________MAIN ________________________
 # this code comes from neurosity docs
