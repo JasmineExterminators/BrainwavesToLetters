@@ -7,9 +7,7 @@ import sys
 from neurosity import NeurositySDK
 from dotenv import load_dotenv
 import os
-import time
 import cv2
-import numpy as np
 
 # Increase recursion limit
 sys.setrecursionlimit(2000)
@@ -68,19 +66,12 @@ def onAppStart(app):
     while isSolvable == False:
         makeInitialPiles(app)
         piles = copy.deepcopy(app.piles)
-        print(piles)
         sideDeck = copy.deepcopy(app.sideDeck)
-        print(sideDeck)
         if isInitialPilesSolvable(app) == True:
-            print('AFTER SUCCESS', piles)
-            print('AFTER SUCCESS', sideDeck)
-            print('YIPEEE')
             isSolvable = True
-            # resetApp(app)
-            # app.piles = piles
-            # app.sideDeck = sideDeck
-        else:
-            print('ALOHAAA ITS NOT WORKEDDDD')
+            resetApp(app)
+            app.piles = piles
+            app.sideDeck = sideDeck
     app.cornerHistory = []
     getEyeTrackingReady(app)
     app.startScreenWords = [
@@ -123,7 +114,6 @@ def game_redrawAll(app):
     drawSideCard(app)
     drawDoneSlots(app)
     drawButtons(app)
-    # drawLabel(app.errorCount, 200, 200)
     if app.isMovingAnimation:
         drawAnimateCardSlide(app)
     if app.isWrongMoveAnimation:
@@ -135,7 +125,6 @@ def game_redrawAll(app):
     
 def game_onKeyPress(app, key):
     if key == '1' and PROBABILITY_BRAIN >= app.probThreshold or key == '2' and PROBABILITY_BRAIN >= app.probThreshold or key == '4' and PROBABILITY_BRAIN >= app.probThreshold or key == '5' and PROBABILITY_BRAIN >= app.probThreshold or key == '6' and PROBABILITY_BRAIN >= app.probThreshold:
-        print(PROBABILITY_BRAIN)
         if key == '1':
             pileFrom = 0
         elif key == '2':
@@ -148,14 +137,10 @@ def game_onKeyPress(app, key):
             pileFrom = 'sideCard'
 
         if isMoveValid(app, pileFrom) != None:
-            print('moveValid')
+
             toSlotOrPile, movedTo = isMoveValid(app, pileFrom)
             makeMove(app, pileFrom, toSlotOrPile, movedTo)
-        else:
-            print('notvalid')
-            app.wrongMoveAnimation = True
     elif key == '3':
-        print(PROBABILITY_BRAIN)
         flipDeck(app)
         
     if key == 'r':
@@ -176,7 +161,6 @@ def game_onStep(app):
     
     corner = gettingGazeCorner(app)
     app.cornerHistory.append(corner)
-    # print(app.cornerHistory)
     if len(app.cornerHistory)>3 and app.cornerHistory[-3:] == [None, None, None]:
         while len(app.cornerHistory) > 1 and app.cornerHistory[-1] == None:
             app.cornerHistory.pop()
@@ -184,10 +168,7 @@ def game_onStep(app):
     else:
         key = None
     if key != None:
-        print(key, 'KEYYYYYYYYYYY')
-        print(PROBABILITY_BRAIN, key)
         if key == '1' and PROBABILITY_BRAIN >= app.probThreshold or key == '2' and PROBABILITY_BRAIN >= app.probThreshold or key == '4' and PROBABILITY_BRAIN >= app.probThreshold or key == '5' and PROBABILITY_BRAIN >= app.probThreshold or key == '6' and PROBABILITY_BRAIN >= app.probThreshold:
-            print('pressed success')
             if key == '1':
                 pileFrom = 0
             elif key == '2':
@@ -200,12 +181,8 @@ def game_onStep(app):
                 pileFrom = 'sideCard'
 
             if isMoveValid(app, pileFrom) != None:
-                print('moveValid')
                 toSlotOrPile, movedTo = isMoveValid(app, pileFrom)
                 makeMove(app, pileFrom, toSlotOrPile, movedTo)
-            else:
-                print('notvalid')
-                app.wrongMoveAnimation = True
         elif key == '3':
             flipDeck(app)
         if winCondition(app): 
@@ -354,7 +331,6 @@ def isMoveValid(app, pileFrom): # pileFrom is the index into app.piles or 'sideC
     # ============ THIS PART CHECKS IF PILE OR SIDECARD TO SLOT ===============
     if pileFrom == 'sideCard':
         if app.sideCard == None:
-            # print('Cannot do! No sidecard flipped!')
             app.errorCount += 1
             return None
         else:
@@ -399,10 +375,6 @@ def isMoveValid(app, pileFrom): # pileFrom is the index into app.piles or 'sideC
         lastCardinPileNum = lastCardinPile[1]
         if cardToMoveColor != lastCardinPileColor and cardToMoveNum +1 == lastCardinPileNum:
             return 'pile', pile
-        # if cardToMoveColor == lastCardinPileColor:
-        #     print('failed due to color, pile', pile)
-        # elif cardToMoveNum +1 != lastCardinPileNum:
-        #     print('failed due to num, cardToMoveNum', cardToMoveNum, 'lastCardinPileNum', lastCardinPileNum, 'pile', pile)
     
     app.errorCount += 1
     return None
@@ -438,7 +410,6 @@ def getCardLocation(app, slotOrPile, stackIndex, cardIndexFromLow): #cardIndex i
     return location
     
 def makeMove(app, pileFrom, toSlotOrPile, movedTo):
-    # print('HEY WERE ABOUT TO MAKE THE MOVE FROM PILE', pileFrom, 'TO', toSlotOrPile, movedTo)
     # ============ THIS PART IS TO GET THE INFO ABOUT THE CARD MOVING AND WHERE IT'S FROM ================
     if pileFrom == 'sideCard': # if from sideCard
         # Getting the number of moving cards (for sideCard it can only be on at a time)
